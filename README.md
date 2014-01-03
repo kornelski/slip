@@ -1,7 +1,7 @@
 # Slip
 A tiny library for interactive swiping and reordering of elements in lists on touch screens. No dependencies. BSD Licensed.
 
-[Try **live demo**](http://pornel.net/slip/) on a touchscreen device (mouse is not supported yet).
+[Try **live demo**](http://pornel.net/slip/) (best on a touchscreen device)
 
 Supports iOS Safari, Firefox Mobile, Chrome Mobile, Opera Mobile (Presto and Blink).
 
@@ -116,8 +116,7 @@ Class `slip-reordering` is set on list element that is being dragged:
 
 ## TODO
 
- * Mouse events fallback.
- * ARIA roles and screen reader testing.
  * Scroll page when dragging element to edge of the screen.
+ * ARIA roles and screen reader testing.
  * Customizable delays and animations.
  * Using swipe to reveal UI beneath the element.

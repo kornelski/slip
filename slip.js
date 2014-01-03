@@ -78,7 +78,7 @@
         • Elements must not change size while reordering or swiping takes place (otherwise it will be visually out of sync)
 */
 /*!
-    Slip.js 0.9
+    Slip.js 1.0
 
     © 2014 Kornel Lesiński <kornel@geekhood.net>. All rights reserved.
 
@@ -136,6 +136,10 @@ window['Slip'] = (function(){
         this.onTouchStart = this.onTouchStart.bind(this);
         this.onTouchMove = this.onTouchMove.bind(this);
         this.onTouchEnd = this.onTouchEnd.bind(this);
+        this.onMouseDown = this.onMouseDown.bind(this);
+        this.onMouseMove = this.onMouseMove.bind(this);
+        this.onMouseUp = this.onMouseUp.bind(this);
+        this.onMouseLeave = this.onMouseLeave.bind(this);
         this.onSelection = this.onSelection.bind(this);
 
         this.setState(this.states.idle);
@@ -168,6 +172,7 @@ window['Slip'] = (function(){
         target: null, // the tapped/swiped/reordered node with height and backed up styles
 
         usingTouch: false, // there's no good way to detect touchscreen preference other than receiving a touch event (really, trust me).
+        mouseHandlersAttached: false,
 
         startPosition: null, // x,y,time where first touch began
         latestPosition: null, // x,y,time where the finger is currently
@@ -179,6 +184,8 @@ window['Slip'] = (function(){
             idle: function() {
                 this.target = null;
                 this.usingTouch = false;
+                this.removeMouseHandlers();
+
                 return {
                     allowTextSelection: true,
                 };
@@ -223,6 +230,10 @@ window['Slip'] = (function(){
 
                         // Chrome likes sideways scrolling :(
                         if (move.x > move.y*1.2) return false;
+                    },
+
+                    onLeave: function() {
+                        this.setState(this.states.idle);
                     },
 
                     onEnd: function() {
@@ -271,6 +282,11 @@ window['Slip'] = (function(){
                         }
                     },
 
+                    onLeave: function() {
+                        this.state.onEnd.call(this);
+                        this.setState(this.states.idle);
+                    },
+
                     onEnd: function() {
                         var dx = this.latestPosition.x - this.previousPosition.x;
                         var dy = this.latestPosition.y - this.previousPosition.y;
@@ -291,6 +307,7 @@ window['Slip'] = (function(){
             reorder: function() {
                 this.target.height = this.target.node.offsetHeight;
 
+                var mouseOutsideTimer;
                 var zero = this.target.node.offsetTop + this.target.height/2;
                 var otherNodes = []
                 var nodes = this.container.childNodes;
@@ -314,6 +331,11 @@ window['Slip'] = (function(){
                 }
 
                 function setPosition() {
+                    if (mouseOutsideTimer) {
+                        // don't care where the mouse is as long as it moves
+                        clearTimeout(mouseOutsideTimer); mouseOutsideTimer = null;
+                    }
+
                     var move = this.getTotalMovement();
                     this.target.node.style[transformPrefix] = 'translate(0,' + move.y + 'px) ' + hwTopLayerMagic + this.target.baseTransform.value;
 
@@ -336,6 +358,8 @@ window['Slip'] = (function(){
 
                 return {
                     leaveState: function() {
+                        if (mouseOutsideTimer) clearTimeout(mouseOutsideTimer);
+
                         if (compositorDoesNotOrderLayers) {
                             this.container.style.webkitTransformStyle = '';
                         }
@@ -353,6 +377,16 @@ window['Slip'] = (function(){
                     },
 
                     onMove: setPosition,
+
+                    onLeave: function() {
+                        // don't let element get stuck if mouse left the window
+                        // but don't cancel immediately as it'd be annoying near window edges
+                        if (mouseOutsideTimer) clearTimeout(mouseOutsideTimer);
+                        mouseOutsideTimer = setTimeout(function(){
+                            mouseOutsideTimer = null;
+                            this.cancel();
+                        }.bind(this), 700);
+                    },
 
                     onEnd: function() {
                         var move = this.getTotalMovement();
@@ -399,11 +433,14 @@ window['Slip'] = (function(){
             this.container.addEventListener('touchstart', this.onTouchStart, false);
             this.container.addEventListener('touchmove', this.onTouchMove, false);
             this.container.addEventListener('touchend', this.onTouchEnd, false);
+            this.container.addEventListener('mousedown', this.onMouseDown, false);
+            // mousemove and mouseup are attached dynamically
         },
 
         detach: function() {
             this.cancel();
 
+            this.container.removeEventListener('mousedown', this.onMouseDown, false);
             this.container.removeEventListener('touchend', this.onTouchEnd, false);
             this.container.removeEventListener('touchmove', this.onTouchMove, false);
             this.container.removeEventListener('touchstart', this.onTouchStart, false);
@@ -454,6 +491,50 @@ window['Slip'] = (function(){
             }
         },
 
+        addMouseHandlers: function() {
+            // unlike touch events, mousemove/up is not conveniently fired on the same element,
+            // but I don't need to listen to unrelated events all the time
+            if (!this.mouseHandlersAttached) {
+                this.mouseHandlersAttached = true;
+                document.documentElement.addEventListener('mousemove', this.onMouseMove, true);
+                document.documentElement.addEventListener('mouseup', this.onMouseUp, true);
+                document.documentElement.addEventListener('mouseleave', this.onMouseLeave, false);
+                window.addEventListener('blur', this.cancel, false);
+            }
+        },
+
+        removeMouseHandlers: function() {
+            if (this.mouseHandlersAttached) {
+                this.mouseHandlersAttached = false;
+                document.documentElement.removeEventListener('mousemove', this.onMouseMove, true);
+                document.documentElement.removeEventListener('mouseup', this.onMouseUp, true);
+                document.documentElement.removeEventListener('mouseleave', this.onMouseLeave, false);
+                window.removeEventListener('blur', this.cancel, false);
+            }
+        },
+
+        onMouseLeave: function(e) {
+            if (e.target === document.documentElement || e.relatedTarget === document.documentElement) {
+                if (this.state.onLeave) {
+                    this.state.onLeave.call(this);
+                }
+            }
+        },
+
+        onMouseDown: function(e) {
+            if (this.usingTouch || !this.setTarget(e)) return;
+
+            this.addMouseHandlers(); // mouseup, etc.
+
+            this.canPreventScrolling = true; // or rather it doesn't apply to mouse
+
+            this.startAtPosition({
+                x: e.clientX,
+                y: e.clientY,
+                time: e.timeStamp,
+            });
+        },
+
         onTouchStart: function(e) {
             this.usingTouch = true;
             this.canPreventScrolling = true;
@@ -464,10 +545,20 @@ window['Slip'] = (function(){
                 return;
             }
 
+            if (!this.setTarget(e)) return;
+
+            this.startAtPosition({
+                x: e.touches[0].clientX,
+                y: e.touches[0].clientY - window.scrollY,
+                time: e.timeStamp,
+            });
+        },
+
+        setTarget: function(e) {
             var targetNode = this.findTargetNode(e.target);
             if (!targetNode) {
                 this.setState(this.states.idle);
-                return;
+                return false;
             }
 
             this.target = {
@@ -475,21 +566,16 @@ window['Slip'] = (function(){
                 node: targetNode,
                 baseTransform: getTransform(targetNode),
             };
+            return true;
+        },
 
-            this.startPosition = this.previousPosition = this.latestPosition = {
-                x: e.touches[0].clientX,
-                y: e.touches[0].clientY - window.scrollY,
-                time: e.timeStamp,
-            };
+        startAtPosition: function(pos) {
+            this.startPosition = this.previousPosition = this.latestPosition = pos;
             this.setState(this.states.undecided);
         },
 
-        onTouchMove: function(e) {
-            this.latestPosition = {
-                x: e.touches[0].clientX,
-                y: e.touches[0].clientY - window.scrollY,
-                time: e.timeStamp,
-            };
+        updatePosition: function(e, pos) {
+            this.latestPosition = pos;
 
             if (this.state.onMove) {
                 if (this.state.onMove.call(this) === false) {
@@ -501,9 +587,32 @@ window['Slip'] = (function(){
             if (this.latestPosition.time - this.previousPosition.time > 100) {
                 this.previousPosition = this.latestPosition;
             }
+        },
+
+        onMouseMove: function(e) {
+            this.updatePosition(e, {
+                x: e.clientX,
+                y: e.clientY,
+                time: e.timeStamp,
+            });
+        },
+
+        onTouchMove: function(e) {
+            this.updatePosition(e, {
+                x: e.touches[0].clientX,
+                y: e.touches[0].clientY - window.scrollY,
+                time: e.timeStamp,
+            });
 
             // In Apple's touch model only the first move event after touchstart can prevent scrolling (and event.cancelable is broken)
             this.canPreventScrolling = false;
+        },
+
+        onMouseUp: function(e) {
+            if (this.state.onEnd && false === this.state.onEnd.call(this)) {
+                e.preventDefault();
+            }
+            this.setState(this.states.idle);
         },
 
         onTouchEnd: function(e) {
