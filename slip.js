@@ -102,6 +102,8 @@
 window['Slip'] = (function(){
     'use strict';
 
+    var requestAnimFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || function(f){setTimeout(f,1)};
+
     var damnYouChrome = /Chrome\/[34]/.test(navigator.userAgent); // For bugs that can't be programmatically detected :(
     var needsBodyHandlerHack = damnYouChrome; // Otherwise I _sometimes_ don't get any touchstart events and only clicks instead.
     var compositorDoesNotOrderLayers = damnYouChrome; // Looks like WebKit bug #61824, but iOS Safari doesn't have that problem.
@@ -713,7 +715,7 @@ window['Slip'] = (function(){
                         o.node.style[transitionPrefix] = '';
                         o.node.style[transformPrefix] = emptySpaceTransform + o.baseTransform.value;
                     });
-                    setTimeout(function(){
+                    requestAnimFrame(function(){
                         siblings.forEach(function(o){
                             o.node.style[transitionPrefix] = transformProperty + ' 0.1s ease-in-out';
                             o.node.style[transformPrefix] = 'translate(0,0) ' + hwLayerMagic + o.baseTransform.value;
@@ -725,7 +727,7 @@ window['Slip'] = (function(){
                             });
                             that.busyAnimating = false;
                         },101);
-                    }, 1);
+                    });
                 }
             }.bind(this), 101);
         },
