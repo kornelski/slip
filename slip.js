@@ -237,7 +237,9 @@ window['Slip'] = (function(){
                     },
 
                     onEnd: function() {
-                        return !this.dispatch(this.target.originalTarget, 'tap');
+                        var allowDefault = !this.dispatch(this.target.originalTarget, 'tap');
+                        this.setState(this.states.idle);
+                        return allowDefault;
                     },
                 };
             },
@@ -284,7 +286,6 @@ window['Slip'] = (function(){
 
                     onLeave: function() {
                         this.state.onEnd.call(this);
-                        this.setState(this.states.idle);
                     },
 
                     onEnd: function() {
@@ -293,13 +294,15 @@ window['Slip'] = (function(){
                         var velocity = Math.sqrt(dx*dx + dy*dy) / (this.latestPosition.time - this.previousPosition.time + 1);
 
                         var move = this.getAbsoluteMovement();
+                        var swiped = velocity > 0.6 && move.time > 110;
 
-                        if (velocity > 0.6 && move.time > 110) {
+                        if (swiped) {
                             if (this.dispatch(this.target.node, 'swipe')) {
                                 swipeSuccess = true; // can't animate here, leaveState overrides anim
                             }
-                            return false;
                         }
+                        this.setState(this.states.idle);
+                        return !swiped;
                     },
                 };
             },
@@ -405,6 +408,7 @@ window['Slip'] = (function(){
                                 }
                             }
                         }
+                        this.setState(this.states.idle);
                         return false;
                     },
                 };
@@ -612,16 +616,14 @@ window['Slip'] = (function(){
             if (this.state.onEnd && false === this.state.onEnd.call(this)) {
                 e.preventDefault();
             }
-            this.setState(this.states.idle);
         },
 
         onTouchEnd: function(e) {
-            if (e.touches.length <= 1 && this.state.onEnd) {
-                if (false === this.state.onEnd.call(this)) {
-                    e.preventDefault();
-                }
+            if (e.touches.length > 1) {
+                this.cancel();
+            } else if (this.state.onEnd && false === this.state.onEnd.call(this)) {
+                e.preventDefault();
             }
-            this.setState(this.states.idle);
         },
 
         getTotalMovement: function() {
