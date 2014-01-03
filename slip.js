@@ -168,6 +168,7 @@ window['Slip'] = (function(){
         container: null,
         options: {},
         state: null,
+        busyAnimating: false, // can't start new animation while old one is still running, otherwise styles don't get backed up properly
 
         target: null, // the tapped/swiped/reordered node with height and backed up styles
 
@@ -189,6 +190,11 @@ window['Slip'] = (function(){
                 return {
                     allowTextSelection: true,
                 };
+            },
+
+            // used to quit previous state
+            none: function() {
+                return {};
             },
 
             undecided: function() {
@@ -565,6 +571,14 @@ window['Slip'] = (function(){
                 return false;
             }
 
+            // quitting previous state may start animations
+            this.setState(this.states.none);
+            // can't call getTransform() safely during anim
+            if (this.busyAnimating) {
+                this.setState(this.states.idle);
+                return false;
+            }
+
             this.target = {
                 originalTarget: e.target,
                 node: targetNode,
@@ -670,19 +684,24 @@ window['Slip'] = (function(){
             // save, because this.target/container could change during animation
             target = target || this.target;
 
+            this.busyAnimating = true;
             target.node.style[transitionPrefix] = transformProperty + ' 0.1s ease-out';
             target.node.style[transformPrefix] = 'translate(0,0) ' + hwLayerMagic + target.baseTransform.value;
             setTimeout(function(){
                 target.node.style[transitionPrefix] = '';
                 target.node.style[transformPrefix] = target.baseTransform.original;
+                this.busyAnimating = false;
                 if (callback) callback.call(this, target);
             }.bind(this), 101);
         },
 
         animateSwipe: function(callback) {
+            var that = this;
             var target = this.target;
             var siblings = this.getSiblings(target);
             var emptySpaceTransform = 'translate(0,' + this.target.height + 'px) ' + hwLayerMagic + ' ';
+
+            this.busyAnimating = true;
 
             // FIXME: animate with real velocity
             target.node.style[transitionPrefix] = 'all 0.1s linear';
@@ -704,6 +723,7 @@ window['Slip'] = (function(){
                                 o.node.style[transitionPrefix] = '';
                                 o.node.style[transformPrefix] = o.baseTransform.original;
                             });
+                            that.busyAnimating = false;
                         },101);
                     }, 1);
                 }
