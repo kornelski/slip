@@ -496,9 +496,9 @@ window['Slip'] = (function(){
             // but I don't need to listen to unrelated events all the time
             if (!this.mouseHandlersAttached) {
                 this.mouseHandlersAttached = true;
-                document.documentElement.addEventListener('mousemove', this.onMouseMove, true);
-                document.documentElement.addEventListener('mouseup', this.onMouseUp, true);
                 document.documentElement.addEventListener('mouseleave', this.onMouseLeave, false);
+                window.addEventListener('mousemove', this.onMouseMove, true);
+                window.addEventListener('mouseup', this.onMouseUp, true);
                 window.addEventListener('blur', this.cancel, false);
             }
         },
@@ -506,9 +506,9 @@ window['Slip'] = (function(){
         removeMouseHandlers: function() {
             if (this.mouseHandlersAttached) {
                 this.mouseHandlersAttached = false;
-                document.documentElement.removeEventListener('mousemove', this.onMouseMove, true);
-                document.documentElement.removeEventListener('mouseup', this.onMouseUp, true);
                 document.documentElement.removeEventListener('mouseleave', this.onMouseLeave, false);
+                window.removeEventListener('mousemove', this.onMouseMove, true);
+                window.removeEventListener('mouseup', this.onMouseUp, true);
                 window.removeEventListener('blur', this.cancel, false);
             }
         },
