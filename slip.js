@@ -522,7 +522,7 @@ window['Slip'] = (function(){
         },
 
         onMouseDown: function(e) {
-            if (this.usingTouch || !this.setTarget(e)) return;
+            if (this.usingTouch || e.button != 0 || !this.setTarget(e)) return;
 
             this.addMouseHandlers(); // mouseup, etc.
 
