@@ -46,48 +46,50 @@ You interact with the library via custom DOM events for swipes/reordering.  Call
 
 ### Example
 
-    var list = document.querySelector('ul#slippylist');
-    new Slip(list);
+```js
+var list = document.querySelector('ul#slippylist');
+new Slip(list);
 
-    list.addEventListener('slip:beforeswipe', function(e) {
-        if (shouldNotSwipe(e.target)) {
-            e.preventDefault(); // won't move sideways if prevented
-        }
-    });
+list.addEventListener('slip:beforeswipe', function(e) {
+    if (shouldNotSwipe(e.target)) {
+        e.preventDefault(); // won't move sideways if prevented
+    }
+});
 
-    list.addEventListener('slip:swipe', function(e) {
-        // e.target list item swiped
-        if (thatWasSwipeToRemove) {
-            // list will collapse over that element
-            e.target.parentNode.removeChild(e.target);
-        } else {
-            e.preventDefault(); // will animate back to original position
-        }
-    });
+list.addEventListener('slip:swipe', function(e) {
+    // e.target list item swiped
+    if (thatWasSwipeToRemove) {
+        // list will collapse over that element
+        e.target.parentNode.removeChild(e.target);
+    } else {
+        e.preventDefault(); // will animate back to original position
+    }
+});
 
-    list.addEventListener('slip:beforereorder', function(e) {
-        if (shouldNotReorder(e.target)) {
-            // if prevented element won't move vertically
-            e.preventDefault();
-        }
-    });
+list.addEventListener('slip:beforereorder', function(e) {
+    if (shouldNotReorder(e.target)) {
+        // if prevented element won't move vertically
+        e.preventDefault();
+    }
+});
 
-    list.addEventListener('slip:beforewait', function(e) {
-        if (isScrollingKnob(e.target)) {
-            // if prevented element will be dragged (instead of page scrolling)
-            e.preventDefault();
-        }
-    });
+list.addEventListener('slip:beforewait', function(e) {
+    if (isScrollingKnob(e.target)) {
+        // if prevented element will be dragged (instead of page scrolling)
+        e.preventDefault();
+    }
+});
 
-    list.addEventListener('slip:reorder', function(e) {
-        // e.target list item reordered.
-        if (reorderedOK) {
-            e.target.parentNode.insertBefore(e.target, e.detail.insertBefore);
-        } else {
-            // element will fly back to original position
-            e.preventDefault();
-        }
-    });
+list.addEventListener('slip:reorder', function(e) {
+    // e.target list item reordered.
+    if (reorderedOK) {
+        e.target.parentNode.insertBefore(e.target, e.detail.insertBefore);
+    } else {
+        // element will fly back to original position
+        e.preventDefault();
+    }
+});
+```
 
 [See live example](http://pornel.net/slip/).
 
@@ -97,22 +99,27 @@ The library doesn't *need* any special CSS, but there are some tweaks that can m
 
 If you don't need text selection you can disable it to make dragging easier:
 
-    li {
-        user-select: none;
-    }
+```css
+li {
+    user-select: none;
+}
+```
 
 You probably don't want horizontal scrollbar when elements are swiped off the list (`slip-swiping-container` class is set on container element only when necessary):
 
-    .slip-swiping-container {
-        overflow-x: hidden;
-    }
+```css
+.slip-swiping-container {
+    overflow-x: hidden;
+}
+```
 
 Class `slip-reordering` is set on list element that is being dragged:
 
-    .slip-reordering {
-        box-shadow: 0 2px 10px rgba(0,0,0,0.45);
-    }
-
+```css
+.slip-reordering {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.45);
+}
+```
 
 ## TODO
 
