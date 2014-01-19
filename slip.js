@@ -250,7 +250,7 @@ window['Slip'] = (function(){
 
                 container.className += ' slip-swiping-container';
                 function removeClass() {
-                    container.className = container.className.replace(/(?:^| )slip-swiping-container/,'');
+                    container.className = container.className.replace(/ ?slip-swiping-container/,'');
                 }
 
                 this.target.height = this.target.node.offsetHeight;
