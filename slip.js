@@ -310,11 +310,21 @@ window['Slip'] = (function(){
             reorder: function() {
                 this.target.height = this.target.node.offsetHeight;
 
+                var originalIndex = 0;
+                var listCount = 0;
                 var mouseOutsideTimer;
                 var zero = this.target.node.offsetTop + this.target.height/2;
                 var otherNodes = []
                 var nodes = this.container.childNodes;
                 for(var i=0; i < nodes.length; i++) {
+                    
+                    if (nodes[i].nodeType === 1) {
+                        listCount++;
+                        if (nodes[i] === this.target.node) {
+                            originalIndex = listCount-1;
+                        }
+                    }
+                    
                     if (nodes[i].nodeType != 1 || nodes[i] === this.target.node) continue;
                     var t = nodes[i].offsetTop;
                     nodes[i].style[transitionPrefix] = transformProperty + ' 0.2s ease-in-out';
@@ -396,14 +406,14 @@ window['Slip'] = (function(){
                         if (move.y < 0) {
                             for(var i=0; i < otherNodes.length; i++) {
                                 if (otherNodes[i].pos > move.y) {
-                                    this.dispatch(this.target.node, 'reorder', {spliceIndex:i, insertBefore:otherNodes[i].node});
+                                    this.dispatch(this.target.node, 'reorder', {spliceIndex:i, insertBefore:otherNodes[i].node}, originalIndex: originalIndex);
                                     break;
                                 }
                             }
                         } else {
                             for(var i=otherNodes.length-1; i >= 0; i--) {
                                 if (otherNodes[i].pos < move.y) {
-                                    this.dispatch(this.target.node, 'reorder', {spliceIndex:i+1, insertBefore:otherNodes[i+1] ? otherNodes[i+1].node : null});
+                                    this.dispatch(this.target.node, 'reorder', {spliceIndex:i+1, insertBefore:otherNodes[i+1] ? otherNodes[i+1].node : null}, originalIndex: originalIndex);
                                     break;
                                 }
                             }
