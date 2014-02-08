@@ -29,6 +29,7 @@ You interact with the library via custom DOM events for swipes/reordering.  Call
 
     * `insertBefore`: DOM node before which element has been dropped (`null` is the end of the list). Use with `node.insertBefore()`.
     * `spliceIndex`: Index of element before which current element has been dropped, not counting the element iself. For use with `Array.splice()` if the list is reflecting objects in some array.
+    * `originalIndex`: The original index of the element.
 
 * `slip:beforereorder`
 
