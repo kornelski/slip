@@ -574,10 +574,18 @@ window['Slip'] = (function(){
                 this.setState(this.states.idle);
                 return false;
             }
+            
+            //check for a scrollable parent
+            var scrollContainer = targetNode.parentNode;
+            while (scrollContainer){
+              if (scrollContainer.scrollHeight > scrollContainer.clientHeight && window.getComputedStyle(scrollContainer)['overflow-y'] != 'visible') break;
+              else scrollContainer = scrollContainer.parentNode;
+            }
 
             this.target = {
                 originalTarget: e.target,
                 node: targetNode,
+                scrollContainer: scrollContainer,
                 baseTransform: getTransform(targetNode),
             };
             return true;
@@ -590,6 +598,26 @@ window['Slip'] = (function(){
 
         updatePosition: function(e, pos) {
             this.latestPosition = pos;
+            
+            var triggerOffset = 40,
+                offset = 0;
+            
+            var scrollable = this.target.scrollContainer || document.body,
+                containerRect = scrollable.getBoundingClientRect(),
+                targetRect = this.target.node.getBoundingClientRect(),
+                bottomOffset = Math.min(containerRect.bottom, window.innerHeight) - targetRect.bottom,
+                topOffset = targetRect.top - Math.max(containerRect.top, 0);https://pornel.net/slip/
+                
+            if (bottomOffset < triggerOffset){
+              offset = triggerOffset - bottomOffset;
+            }
+            else if (topOffset < triggerOffset){
+              offset = topOffset - triggerOffset;
+            }
+            
+            var prevScrollTop = scrollable.scrollTop;
+            scrollable.scrollTop += offset;
+            if (prevScrollTop != scrollable.scrollTop) this.startPosition.y += prevScrollTop-scrollable.scrollTop;
 
             if (this.state.onMove) {
                 if (this.state.onMove.call(this) === false) {
