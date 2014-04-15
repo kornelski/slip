@@ -124,7 +124,6 @@ Class `slip-reordering` is set on list element that is being dragged:
 
 ## TODO
 
- * Scroll page when dragging element to edge of the screen.
  * ARIA roles and screen reader testing.
  * Customizable delays and animations.
  * Using swipe to reveal UI beneath the element.
