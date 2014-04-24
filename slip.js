@@ -606,7 +606,7 @@ window['Slip'] = (function(){
                 containerRect = scrollable.getBoundingClientRect(),
                 targetRect = this.target.node.getBoundingClientRect(),
                 bottomOffset = Math.min(containerRect.bottom, window.innerHeight) - targetRect.bottom,
-                topOffset = targetRect.top - Math.max(containerRect.top, 0);https://pornel.net/slip/
+                topOffset = targetRect.top - Math.max(containerRect.top, 0);
                 
             if (bottomOffset < triggerOffset){
               offset = triggerOffset - bottomOffset;
