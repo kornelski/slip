@@ -296,8 +296,15 @@ window['Slip'] = (function(){
                         var move = this.getAbsoluteMovement();
                         var swiped = velocity > 0.6 && move.time > 110;
 
+						var direction;
+						if (dx > 0) {
+							direction = "right";
+						} else {
+							direction = "left";
+						}						
+						
                         if (swiped) {
-                            if (this.dispatch(this.target.node, 'swipe')) {
+                            if (this.dispatch(this.target.node, 'swipe', {direction: direction})) {
                                 swipeSuccess = true; // can't animate here, leaveState overrides anim
                             }
                         }
