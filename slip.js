@@ -537,6 +537,8 @@ window['Slip'] = (function(){
         },
 
         onMouseLeave: function(e) {
+            if (this.usingTouch) return;
+
             if (e.target === document.documentElement || e.relatedTarget === document.documentElement) {
                 if (this.state.onLeave) {
                     this.state.onLeave.call(this);
@@ -660,6 +662,8 @@ window['Slip'] = (function(){
         },
 
         onMouseUp: function(e) {
+            if (this.usingTouch || e.button !== 0) return;
+
             if (this.state.onEnd && false === this.state.onEnd.call(this)) {
                 e.preventDefault();
             }
