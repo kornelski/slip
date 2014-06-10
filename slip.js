@@ -102,7 +102,7 @@
 window['Slip'] = (function(){
     'use strict';
 
-    var damnYouChrome = /Chrome\/34/.test(navigator.userAgent); // For bugs that can't be programmatically detected :(
+    var damnYouChrome = /Chrome\/[34]/.test(navigator.userAgent); // For bugs that can't be programmatically detected :(
     var needsBodyHandlerHack = damnYouChrome; // Otherwise I _sometimes_ don't get any touchstart events and only clicks instead.
     var compositorDoesNotOrderLayers = damnYouChrome; // Looks like WebKit bug #61824, but iOS Safari doesn't have that problem.
 
