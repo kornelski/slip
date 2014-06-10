@@ -102,9 +102,12 @@
 window['Slip'] = (function(){
     'use strict';
 
-    var damnYouChrome = /Chrome\/[34]/.test(navigator.userAgent); // For bugs that can't be programmatically detected :(
+    var damnYouChrome = /Chrome\/[34]/.test(navigator.userAgent); // For bugs that can't be programmatically detected :( Intended to catch all versions of Chrome 30-40
     var needsBodyHandlerHack = damnYouChrome; // Otherwise I _sometimes_ don't get any touchstart events and only clicks instead.
-    var compositorDoesNotOrderLayers = damnYouChrome; // Looks like WebKit bug #61824, but iOS Safari doesn't have that problem.
+
+    /* When dragging elements down in Chrome (tested 34-37) dragged element may appear below stationary elements.
+       Looks like WebKit bug #61824, but iOS Safari doesn't have that problem. */
+    var compositorDoesNotOrderLayers = damnYouChrome;
 
     // -webkit-mess
     var testElement = document.createElement('div');
