@@ -321,7 +321,7 @@ window['Slip'] = (function(){
                 var listCount = 0;
                 var mouseOutsideTimer;
                 var zero = this.target.node.offsetTop + this.target.height/2;
-                var otherNodes = []
+                var otherNodes = [];
                 var nodes = this.container.childNodes;
                 for(var i=0; i < nodes.length; i++) {
 
@@ -351,6 +351,8 @@ window['Slip'] = (function(){
                 }
 
                 function setPosition() {
+                    /*jshint validthis:true */
+
                     if (mouseOutsideTimer) {
                         // don't care where the mouse is as long as it moves
                         clearTimeout(mouseOutsideTimer); mouseOutsideTimer = null;
