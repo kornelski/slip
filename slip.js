@@ -301,8 +301,8 @@ window['Slip'] = (function(){
 							direction = "right";
 						} else {
 							direction = "left";
-						}						
-						
+						}
+
                         if (swiped) {
                             if (this.dispatch(this.target.node, 'swipe', {direction: direction})) {
                                 swipeSuccess = true; // can't animate here, leaveState overrides anim
@@ -583,7 +583,7 @@ window['Slip'] = (function(){
                 this.setState(this.states.idle);
                 return false;
             }
-            
+
             //check for a scrollable parent
             var scrollContainer = targetNode.parentNode;
             while (scrollContainer){
@@ -607,23 +607,23 @@ window['Slip'] = (function(){
 
         updatePosition: function(e, pos) {
             this.latestPosition = pos;
-            
+
             var triggerOffset = 40,
                 offset = 0;
-            
+
             var scrollable = this.target.scrollContainer || document.body,
                 containerRect = scrollable.getBoundingClientRect(),
                 targetRect = this.target.node.getBoundingClientRect(),
                 bottomOffset = Math.min(containerRect.bottom, window.innerHeight) - targetRect.bottom,
                 topOffset = targetRect.top - Math.max(containerRect.top, 0);
-                
+
             if (bottomOffset < triggerOffset){
               offset = triggerOffset - bottomOffset;
             }
             else if (topOffset < triggerOffset){
               offset = topOffset - triggerOffset;
             }
-            
+
             var prevScrollTop = scrollable.scrollTop;
             scrollable.scrollTop += offset;
             if (prevScrollTop != scrollable.scrollTop) this.startPosition.y += prevScrollTop-scrollable.scrollTop;
