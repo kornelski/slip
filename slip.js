@@ -184,7 +184,7 @@ window['Slip'] = (function(){
         canPreventScrolling: false,
 
         states: {
-            idle: function() {
+            idle: function idleStateInit() {
                 this.target = null;
                 this.usingTouch = false;
                 this.removeMouseHandlers();
@@ -194,7 +194,7 @@ window['Slip'] = (function(){
                 };
             },
 
-            undecided: function() {
+            undecided: function undecidedStateInit() {
                 this.target.height = this.target.node.offsetHeight;
                 this.target.node.style[transitionPrefix] = '';
 
@@ -247,7 +247,7 @@ window['Slip'] = (function(){
                 };
             },
 
-            swipe: function() {
+            swipe: function swipeStateInit() {
                 var swipeSuccess = false;
                 var container = this.container;
 
@@ -317,7 +317,7 @@ window['Slip'] = (function(){
                 };
             },
 
-            reorder: function() {
+            reorder: function reorderStateInit() {
                 this.target.height = this.target.node.offsetHeight;
 
                 var originalIndex = 0;
