@@ -240,7 +240,7 @@ window['Slip'] = (function(){
                     },
 
                     onEnd: function() {
-                        var allowDefault = !this.dispatch(this.target.originalTarget, 'tap');
+                        var allowDefault = this.dispatch(this.target.originalTarget, 'tap');
                         this.setState(this.states.idle);
                         return allowDefault;
                     },
