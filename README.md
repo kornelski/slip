@@ -45,6 +45,10 @@ You interact with the library via custom DOM events for swipes/reordering.  Call
 
     When element was tapped without being swiped/reordered.
 
+* `slip:cancel`
+
+    Fired when the user stops dragging and the element returns to it's original position.
+
 ### Example
 
 ```js

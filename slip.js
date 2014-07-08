@@ -29,6 +29,9 @@
         • slip:tap
             When element was tapped without being swiped/reordered.
 
+        • slip:cancelswipe
+            Fired when the user stops dragging and the element returns to it's original position.
+
 
     Usage:
 
@@ -273,6 +276,7 @@ window['Slip'] = (function(){
                             }.bind(this));
                         } else {
                             this.animateToZero(removeClass);
+                            this.dispatch(this.target.node, 'cancelswipe');
                         }
                     },
 
