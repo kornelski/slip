@@ -30,7 +30,7 @@
             When element was tapped without being swiped/reordered.
 
         • slip:cancelswipe
-            Fired when the user stops dragging and the element returns to it's original position.
+            Fired when the user stops dragging and the element returns to its original position.
 
 
     Usage:
