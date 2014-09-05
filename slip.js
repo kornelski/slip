@@ -202,7 +202,9 @@ window['Slip'] = (function(){
                 this.target.node.style[transitionPrefix] = '';
 
                 if (!this.dispatch(this.target.originalTarget, 'beforewait')) {
+                  if (this.dispatch(this.target.originalTarget, 'beforereorder')) {
                     this.setState(this.states.reorder);
+                  }
                 } else {
                     var holdTimer = setTimeout(function(){
                         var move = this.getAbsoluteMovement();
