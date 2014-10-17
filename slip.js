@@ -157,7 +157,7 @@ window['Slip'] = (function(){
         if (transform) {
             return {
                 value:transform,
-                original:transform,
+                original:transform
             };
         }
 
@@ -193,7 +193,7 @@ window['Slip'] = (function(){
                 this.removeMouseHandlers();
 
                 return {
-                    allowTextSelection: true,
+                    allowTextSelection: true
                 };
             },
 
@@ -248,7 +248,7 @@ window['Slip'] = (function(){
                         var allowDefault = this.dispatch(this.target.originalTarget, 'tap');
                         this.setState(this.states.idle);
                         return allowDefault;
-                    },
+                    }
                 };
             },
 
@@ -319,7 +319,7 @@ window['Slip'] = (function(){
                         }
                         this.setState(this.states.idle);
                         return !swiped;
-                    },
+                    }
                 };
             },
 
@@ -347,7 +347,7 @@ window['Slip'] = (function(){
                     otherNodes.push({
                         node: nodes[i],
                         baseTransform: getTransform(nodes[i]),
-                        pos: t + (t < zero ? nodes[i].offsetHeight : 0) - zero,
+                        pos: t + (t < zero ? nodes[i].offsetHeight : 0) - zero
                     });
                 }
 
@@ -438,9 +438,9 @@ window['Slip'] = (function(){
                         }
                         this.setState(this.states.idle);
                         return false;
-                    },
+                    }
                 };
-            },
+            }
         },
 
         attach: function(container) {
@@ -565,7 +565,7 @@ window['Slip'] = (function(){
             this.startAtPosition({
                 x: e.clientX,
                 y: e.clientY,
-                time: e.timeStamp,
+                time: e.timeStamp
             });
         },
 
@@ -584,7 +584,7 @@ window['Slip'] = (function(){
             this.startAtPosition({
                 x: e.touches[0].clientX,
                 y: e.touches[0].clientY - window.scrollY,
-                time: e.timeStamp,
+                time: e.timeStamp
             });
         },
 
@@ -606,7 +606,7 @@ window['Slip'] = (function(){
                 originalTarget: e.target,
                 node: targetNode,
                 scrollContainer: scrollContainer,
-                baseTransform: getTransform(targetNode),
+                baseTransform: getTransform(targetNode)
             };
             return true;
         },
@@ -655,7 +655,7 @@ window['Slip'] = (function(){
             this.updatePosition(e, {
                 x: e.clientX,
                 y: e.clientY,
-                time: e.timeStamp,
+                time: e.timeStamp
             });
         },
 
@@ -663,7 +663,7 @@ window['Slip'] = (function(){
             this.updatePosition(e, {
                 x: e.touches[0].clientX,
                 y: e.touches[0].clientY - window.scrollY,
-                time: e.timeStamp,
+                time: e.timeStamp
             });
 
             // In Apple's touch model only the first move event after touchstart can prevent scrolling (and event.cancelable is broken)
@@ -689,7 +689,7 @@ window['Slip'] = (function(){
         getTotalMovement: function() {
             return {
                 x:this.latestPosition.x - this.startPosition.x,
-                y:this.latestPosition.y - this.startPosition.y,
+                y:this.latestPosition.y - this.startPosition.y
             };
         },
 
@@ -697,7 +697,7 @@ window['Slip'] = (function(){
             return {
                 x: Math.abs(this.latestPosition.x - this.startPosition.x),
                 y: Math.abs(this.latestPosition.y - this.startPosition.y),
-                time:this.latestPosition.time - this.startPosition.time,
+                time:this.latestPosition.time - this.startPosition.time
             };
         },
 
@@ -719,7 +719,7 @@ window['Slip'] = (function(){
             while(tmp) {
                 if (tmp.nodeType == 1) siblings.push({
                     node: tmp,
-                    baseTransform: getTransform(tmp),
+                    baseTransform: getTransform(tmp)
                 });
                 tmp = tmp.nextSibling;
             }
@@ -768,7 +768,7 @@ window['Slip'] = (function(){
                     }, 1);
                 }
             }.bind(this), 101);
-        },
+        }
     };
 
     // AMD
