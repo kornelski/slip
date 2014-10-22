@@ -131,3 +131,9 @@ Class `slip-reordering` is set on list element that is being dragged:
  * ARIA roles and screen reader testing.
  * Customizable delays and animations.
  * Using swipe to reveal UI beneath the element.
+
+## Old browsers
+
+ * Closure Compiler by default doesn't support ES5. Add `--language_in ECMASCRIPT5`.
+ * For very old WebKit add `Function.bind` polyfill.
+ * On mobile IE11 is [required](/pornel/slip/issues/2). On desktop IE9 should work.
