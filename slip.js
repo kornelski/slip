@@ -129,6 +129,30 @@ window['Slip'] = (function(){
     var attachedBodyHandlerHack = false;
     var nullHandler = function(){};
 
+    // Polyfill for Function.prototype.bind
+    if (!Function.prototype.bind) {
+        Function.prototype.bind = function(oThis) {
+            if (typeof this !== 'function') {
+                throw new TypeError('Not callable');
+            }
+	
+            var aArgs   = Array.prototype.slice.call(arguments, 1),
+                fToBind = this,
+                fNOP    = function() {},
+                fBound  = function() {
+                return fToBind.apply(this instanceof fNOP && oThis
+                        ? this
+                        : oThis,
+                        aArgs.concat(Array.prototype.slice.call(arguments)));
+                };
+	
+            fNOP.prototype = this.prototype;
+            fBound.prototype = new fNOP();
+            
+            return fBound;
+        }
+    }
+		
     function Slip(container, options) {
         if ('string' === typeof container) container = document.querySelector(container);
         if (!container || !container.addEventListener) throw new Error("Please specify DOM node to attach to");
@@ -136,7 +160,7 @@ window['Slip'] = (function(){
         if (!this || this === window) return new Slip(container, options);
 
         this.options = options;
-
+        
         // Functions used for as event handlers need usable `this` and must not change to be removable
         this.cancel = this.setState.bind(this, this.states.idle);
         this.onTouchStart = this.onTouchStart.bind(this);
