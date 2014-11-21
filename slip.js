@@ -168,6 +168,22 @@ window['Slip'] = (function(){
         return {value:'', original:''};
     }
 
+    function findIndex(target, nodes) {
+      var originalIndex = 0;
+      var listCount = 0;
+
+      for (var i=0; i < nodes.length; i++) {
+        if (nodes[i].nodeType === 1) {
+          listCount++;
+          if (nodes[i] === target.node) {
+            originalIndex = listCount-1;
+          }
+        }
+      }
+
+      return originalIndex;
+    }
+
     // All functions in states are going to be executed in context of Slip object
     Slip.prototype = {
 
@@ -256,18 +272,7 @@ window['Slip'] = (function(){
                 var swipeSuccess = false;
                 var container = this.container;
 
-                var originalIndex = 0;
-                var listCount = 0;
-                var nodes = this.container.childNodes;
-                for(var i=0; i < nodes.length; i++) {
-
-                    if (nodes[i].nodeType === 1) {
-                        listCount++;
-                        if (nodes[i] === this.target.node) {
-                            originalIndex = listCount-1;
-                        }
-                    }
-                }
+                var originalIndex = findIndex(this.target, this.container.childNodes);
 
                 container.className += ' slip-swiping-container';
                 function removeClass() {
@@ -339,21 +344,12 @@ window['Slip'] = (function(){
             reorder: function reorderStateInit() {
                 this.target.height = this.target.node.offsetHeight;
 
-                var originalIndex = 0;
-                var listCount = 0;
+                var nodes = this.container.childNodes;
+                var originalIndex = findIndex(this.target, nodes);
                 var mouseOutsideTimer;
                 var zero = this.target.node.offsetTop + this.target.height/2;
                 var otherNodes = [];
-                var nodes = this.container.childNodes;
                 for(var i=0; i < nodes.length; i++) {
-
-                    if (nodes[i].nodeType === 1) {
-                        listCount++;
-                        if (nodes[i] === this.target.node) {
-                            originalIndex = listCount-1;
-                        }
-                    }
-
                     if (nodes[i].nodeType != 1 || nodes[i] === this.target.node) continue;
                     var t = nodes[i].offsetTop;
                     nodes[i].style[transitionPrefix] = transformProperty + ' 0.2s ease-in-out';
