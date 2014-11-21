@@ -256,6 +256,19 @@ window['Slip'] = (function(){
                 var swipeSuccess = false;
                 var container = this.container;
 
+                var originalIndex = 0;
+                var listCount = 0;
+                var nodes = this.container.childNodes;
+                for(var i=0; i < nodes.length; i++) {
+
+                    if (nodes[i].nodeType === 1) {
+                        listCount++;
+                        if (nodes[i] === this.target.node) {
+                            originalIndex = listCount-1;
+                        }
+                    }
+                }
+
                 container.className += ' slip-swiping-container';
                 function removeClass() {
                     container.className = container.className.replace(/(?:^| )slip-swiping-container/,'');
@@ -313,7 +326,7 @@ window['Slip'] = (function(){
 						}
 
                         if (swiped) {
-                            if (this.dispatch(this.target.node, 'swipe', {direction: direction})) {
+                            if (this.dispatch(this.target.node, 'swipe', {direction: direction, originalIndex: originalIndex})) {
                                 swipeSuccess = true; // can't animate here, leaveState overrides anim
                             }
                         }
