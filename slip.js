@@ -99,7 +99,20 @@
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-window['Slip'] = (function(){
+(function (root, factory) {
+    if (typeof define === 'function' && define.amd) {
+        // AMD. Register as an anonymous module.
+        define([], factory);
+    } else if (typeof exports === 'object') {
+        // Node. Does not work with strict CommonJS, but
+        // only CommonJS-like environments that support module.exports,
+        // like Node.
+        module.exports = factory();
+    } else {
+        // Browser globals (root is window)
+        root.Slip = factory();
+  }
+}(this, function () {
     'use strict';
 
     var requestAnimFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || function(f){setTimeout(f,1)};
@@ -733,12 +746,5 @@ window['Slip'] = (function(){
         },
     };
 
-    // AMD
-    if ('function' === typeof define && define.amd) {
-        define(function(){
-            return Slip;
-        });
-    }
     return Slip;
-})();
-
+}));
