@@ -80,7 +80,7 @@
     Caveats:
         • Elements must not change size while reordering or swiping takes place (otherwise it will be visually out of sync)
 */
-/*!
+/*! @license
     Slip.js 1.2.0
 
     © 2014 Kornel Lesiński <kornel@geekhood.net>. All rights reserved.
