@@ -126,6 +126,8 @@ Class `slip-reordering` is set on list element that is being dragged:
 }
 ```
 
+iOS also tends to add highlight color to tapped areas. If that bothers you, apply `-webkit-tap-highlight-color: rgba(0,0,0,0);` to tappable elements.
+
 ## TODO
 
  * ARIA roles and screen reader testing.
