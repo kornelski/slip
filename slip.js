@@ -103,16 +103,19 @@ window['Slip'] = (function(){
     'use strict';
 
     var damnYouChrome = /Chrome\/[34]/.test(navigator.userAgent); // For bugs that can't be programmatically detected :(
+    var damnYouIe9 = (window.ActiveXObject && window.addEventListener && !window.atob);
     var needsBodyHandlerHack = damnYouChrome; // Otherwise I _sometimes_ don't get any touchstart events and only clicks instead.
     var compositorDoesNotOrderLayers = damnYouChrome; // Looks like WebKit bug #61824, but iOS Safari doesn't have that problem.
 
     // -webkit-mess
     var testElement = document.createElement('div');
 
-    var transitionPrefix = "webkitTransition" in testElement.style ? "webkitTransition" : "transition";
-    var transformPrefix = "webkitTransform" in testElement.style ? "webkitTransform" : "transform";
-    var transformProperty = transformPrefix === "webkitTransform" ? "-webkit-transform" : "transform";
-    var userSelectPrefix = "webkitUserSelect" in testElement.style ? "webkitUserSelect" : "userSelect";
+    var iePrePrefix = (damnYouIe9 ? "-ms-" : "");
+    var transitionPrefix = "webkitTransition" in testElement.style ? "webkitTransition" : iePrePrefix + "transition";
+    var transformPrefix = "webkitTransform" in testElement.style ? "webkitTransform" : iePrePrefix + "transform";
+    var transformProperty = transformPrefix === "webkitTransform" ? "-webkit-transform" : iePrePrefix + "transform";
+    var userSelectPrefix = "webkitUserSelect" in testElement.style ? "webkitUserSelect" : iePrePrefix + "userSelect";
+
 
     testElement.style[transformPrefix] = 'translateZ(0)';
     var hwLayerMagic = testElement.style[transformPrefix] ? 'translateZ(0) ' : '';
