@@ -626,6 +626,8 @@ window['Slip'] = (function(){
         },
 
         updatePosition: function(e, pos) {
+            if(this.target == null)
+                return;
             this.latestPosition = pos;
 
             var triggerOffset = 40,
