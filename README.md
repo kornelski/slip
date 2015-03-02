@@ -139,3 +139,9 @@ iOS also tends to add highlight color to tapped areas. If that bothers you, appl
  * Closure Compiler by default doesn't support ES5. Add `--language_in ECMASCRIPT5`.
  * For very old WebKit add `Function.bind` polyfill.
  * On mobile IE11 is [required](/pornel/slip/issues/2). On desktop IE9 should work.
+
+## Moving between two lists
+
+For sake of simplicity of implementation and interaction dragging works only within a single list. If you need complex drag'n'drop, consider another, more generic library.
+
+If you only need sorting between two lists (positioned one under another), then you can cheat a little by adding a non-draggable item to the list and styling it to look like a gap between two lists.
