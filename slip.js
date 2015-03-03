@@ -105,6 +105,20 @@
 window['Slip'] = (function(){
     'use strict';
 
+    var accessibility = {
+        // Set values to false if you don't want Slip to manage them
+        container: {
+            ariaRole: "listbox",
+            tabIndex: 0,
+            focus: true, // focuses after drop
+        },
+        items: {
+            ariaRole: "option", // If "option" flattens items, try "group": https://www.marcozehe.de/2013/03/08/sometimes-you-have-to-use-illegal-wai-aria-to-make-stuff-work/
+            tabIndex: -1, // 0 will make every item tabbable, which isn't always useful
+            focus: true, // focuses when dragging
+        },
+    };
+
     var damnYouChrome = /Chrome\/[34]/.test(navigator.userAgent); // For bugs that can't be programmatically detected :( Intended to catch all versions of Chrome 30-40
     var needsBodyHandlerHack = damnYouChrome; // Otherwise I _sometimes_ don't get any touchstart events and only clicks instead.
 
@@ -150,6 +164,7 @@ window['Slip'] = (function(){
         this.onMouseUp = this.onMouseUp.bind(this);
         this.onMouseLeave = this.onMouseLeave.bind(this);
         this.onSelection = this.onSelection.bind(this);
+        this.onContainerFocus = this.onContainerFocus.bind(this);
 
         this.setState(this.states.idle);
         this.attach(container);
@@ -343,6 +358,10 @@ window['Slip'] = (function(){
             },
 
             reorder: function reorderStateInit() {
+                if (this.target.node.focus && accessibility.items.focus) {
+                    this.target.node.focus();
+                }
+
                 this.target.height = this.target.node.offsetHeight;
 
                 var nodes = this.container.childNodes;
@@ -405,6 +424,10 @@ window['Slip'] = (function(){
                             this.container.style.webkitTransformStyle = '';
                         }
 
+                        if (this.container.focus && accessibility.container.focus) {
+                            this.container.focus();
+                        }
+
                         this.target.node.className = this.target.node.className.replace(/(?:^| )slip-reordering/,'');
                         this.target.node.style[userSelectPrefix] = '';
 
@@ -465,6 +488,17 @@ window['Slip'] = (function(){
             }
 
             this.container = container;
+
+            // Accessibility
+            if (false !== accessibility.container.tabIndex) {
+                this.container.tabIndex = accessibility.container.tabIndex;
+            }
+            if (accessibility.container.ariaRole) {
+                this.container.setAttribute('aria-role', accessibility.container.ariaRole);
+            }
+            this.setChildNodesAriaRoles();
+            this.container.addEventListener('focus', this.onContainerFocus, false);
+
             this.otherNodes = [];
 
             // selection on iOS interferes with reordering
@@ -517,6 +551,23 @@ window['Slip'] = (function(){
                 targetNode = targetNode.parentNode;
             }
             return targetNode;
+        },
+
+        onContainerFocus: function(e) {
+            this.setChildNodesAriaRoles();
+        },
+
+        setChildNodesAriaRoles: function() {
+            var nodes = this.container.childNodes;
+            for(var i=0; i < nodes.length; i++) {
+                if (nodes[i].nodeType != 1) continue;
+                if (accessibility.items.ariaRole) {
+                    nodes[i].setAttribute('aria-role', accessibility.items.ariaRole);
+                }
+                if (false !== accessibility.items.tabIndex) {
+                    nodes[i].tabIndex = accessibility.items.tabIndex;
+                }
+            }
         },
 
         onSelection: function(e) {
