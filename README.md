@@ -130,18 +130,18 @@ iOS also tends to add highlight color to tapped areas. If that bothers you, appl
 
 ## TODO
 
- * ARIA roles and screen reader testing.
+ * ARIA roles and screen reader testing. Please note that drag'n'drop is very tricky to do with VoiceOver, and for accessibility you need a backup method.
  * Customizable delays and animations.
  * Using swipe to reveal UI beneath the element.
 
 ## Old browsers
 
- * Closure Compiler by default doesn't support ES5. Add `--language_in ECMASCRIPT5`.
+ * Closure Compiler by default doesn't support ES5. Add `--language_in ECMASCRIPT5` or switch to UglifyJS2.
  * For very old WebKit add `Function.bind` polyfill.
- * On mobile IE11 is [required](/pornel/slip/issues/2). On desktop IE9 should work.
+ * PointerEvents are not supported, so only IE versions with TouchEvents (mobile 11+) are supported.
 
 ## Moving between two lists
 
 For sake of simplicity of implementation and interaction dragging works only within a single list. If you need complex drag'n'drop, consider another, more generic library.
 
-If you only need sorting between two lists (positioned one under another), then you can cheat a little by adding a non-draggable item to the list and styling it to look like a gap between two lists.
+If you only need sorting between two lists (positioned one under another), then you can cheat a little by adding a non-draggable item to the list and styling it to look like a gap between the two lists.
