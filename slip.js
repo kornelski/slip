@@ -137,6 +137,8 @@ window['Slip'] = (function(){
 
         this.options = options = options || {};
         this.options.keepSwipingPercent = options.keepSwipingPercent || 0;
+        this.options.minimumSwipeVelocity = options.minimumSwipeVelocity || 1;
+        this.options.minimumSwipeTime = options.minimumSwipeTime || 110;
 
         // Functions used for as event handlers need usable `this` and must not change to be removable
         this.cancel = this.setState.bind(this, this.states.idle);
@@ -323,7 +325,7 @@ window['Slip'] = (function(){
                         // How far out has the item been swiped?
                         var swipedPercent = Math.abs((this.startPosition.x - this.previousPosition.x) / this.container.clientWidth) * 100;
 
-                        var swiped = (velocity > 1 && move.time > 110) || (this.options.keepSwipingPercent && swipedPercent > this.options.keepSwipingPercent);
+                        var swiped = (velocity > this.options.minimumSwipeVelocity && move.time > this.options.minimumSwipeTime) || (this.options.keepSwipingPercent && swipedPercent > this.options.keepSwipingPercent);
 
                         if (swiped) {
                             if (this.dispatch(this.target.node, 'swipe', {direction: move.directionX, originalIndex: originalIndex})) {
