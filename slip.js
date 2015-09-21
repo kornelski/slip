@@ -135,7 +135,10 @@ window['Slip'] = (function(){
 
         if (!this || this === window) return new Slip(container, options);
 
-        this.options = options;
+        this.options = options = options || {};
+        this.options.keepSwipingPercent = options.keepSwipingPercent || 0;
+        this.options.minimumSwipeVelocity = options.minimumSwipeVelocity || 1;
+        this.options.minimumSwipeTime = options.minimumSwipeTime || 110;
 
         // Functions used for as event handlers need usable `this` and must not change to be removable
         this.cancel = this.setState.bind(this, this.states.idle);
@@ -241,7 +244,7 @@ window['Slip'] = (function(){
                         var move = this.getAbsoluteMovement();
 
                         if (move.x > 20 && move.y < Math.max(100, this.target.height)) {
-                            if (this.dispatch(this.target.originalTarget, 'beforeswipe')) {
+                            if (this.dispatch(this.target.originalTarget, 'beforeswipe', {directionX: move.directionX, directionY: move.directionY})) {
                                 this.setState(this.states.swipe);
                                 return false;
                             } else {
@@ -316,22 +319,16 @@ window['Slip'] = (function(){
                     },
 
                     onEnd: function() {
-                        var dx = this.latestPosition.x - this.previousPosition.x;
-                        var dy = this.latestPosition.y - this.previousPosition.y;
-                        var velocity = Math.sqrt(dx*dx + dy*dy) / (this.latestPosition.time - this.previousPosition.time + 1);
-
                         var move = this.getAbsoluteMovement();
-                        var swiped = velocity > 0.6 && move.time > 110;
+                        var velocity = move.x / move.time;
 
-						var direction;
-						if (dx > 0) {
-							direction = "right";
-						} else {
-							direction = "left";
-						}
+                        // How far out has the item been swiped?
+                        var swipedPercent = Math.abs((this.startPosition.x - this.previousPosition.x) / this.container.clientWidth) * 100;
+
+                        var swiped = (velocity > this.options.minimumSwipeVelocity && move.time > this.options.minimumSwipeTime) || (this.options.keepSwipingPercent && swipedPercent > this.options.keepSwipingPercent);
 
                         if (swiped) {
-                            if (this.dispatch(this.target.node, 'swipe', {direction: direction, originalIndex: originalIndex})) {
+                            if (this.dispatch(this.target.node, 'swipe', {direction: move.directionX, originalIndex: originalIndex})) {
                                 swipeSuccess = true; // can't animate here, leaveState overrides anim
                             }
                         }
@@ -709,6 +706,8 @@ window['Slip'] = (function(){
                 x: Math.abs(this.latestPosition.x - this.startPosition.x),
                 y: Math.abs(this.latestPosition.y - this.startPosition.y),
                 time:this.latestPosition.time - this.startPosition.time,
+                directionX:this.latestPosition.x - this.startPosition.x < 0 ? 'left' : 'right',
+                directionY:this.latestPosition.y - this.startPosition.y < 0 ? 'up' : 'down',
             };
         },
 
