@@ -135,7 +135,8 @@ window['Slip'] = (function(){
 
         if (!this || this === window) return new Slip(container, options);
 
-        this.options = options;
+        this.options = options = options || {};
+        this.options.keepSwipingPercent = options.keepSwipingPercent || 0;
 
         // Functions used for as event handlers need usable `this` and must not change to be removable
         this.cancel = this.setState.bind(this, this.states.idle);
@@ -317,9 +318,13 @@ window['Slip'] = (function(){
 
                     onEnd: function() {
                         var move = this.getAbsoluteMovement();
-                        var velocity = Math.abs(move.x) / move.time;
+                        var velocity = move.x / move.time;
 
-                        var swiped = velocity > 1 && move.time > 110;
+                        // How far out has the item been swiped?
+                        var swipedPercent = Math.abs((this.startPosition.x - this.previousPosition.x) / this.container.clientWidth) * 100;
+
+                        var swiped = (velocity > 1 && move.time > 110) || (this.options.keepSwipingPercent && swipedPercent > this.options.keepSwipingPercent);
+
                         if (swiped) {
                             if (this.dispatch(this.target.node, 'swipe', {direction: move.directionX, originalIndex: originalIndex})) {
                                 swipeSuccess = true; // can't animate here, leaveState overrides anim
