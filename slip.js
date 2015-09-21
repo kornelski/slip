@@ -709,6 +709,8 @@ window['Slip'] = (function(){
                 x: Math.abs(this.latestPosition.x - this.startPosition.x),
                 y: Math.abs(this.latestPosition.y - this.startPosition.y),
                 time:this.latestPosition.time - this.startPosition.time,
+                xDirection:this.latestPosition.x - this.startPosition.x < 0 ? 'left' : 'right',
+                yDirection:this.latestPosition.y - this.startPosition.y < 0 ? 'up' : 'down',
             };
         },
 
