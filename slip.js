@@ -316,22 +316,12 @@ window['Slip'] = (function(){
                     },
 
                     onEnd: function() {
-                        var dx = this.latestPosition.x - this.previousPosition.x;
-                        var dy = this.latestPosition.y - this.previousPosition.y;
-                        var velocity = Math.sqrt(dx*dx + dy*dy) / (this.latestPosition.time - this.previousPosition.time + 1);
-
                         var move = this.getAbsoluteMovement();
-                        var swiped = velocity > 0.6 && move.time > 110;
+                        var velocity = Math.abs(move.x) / move.time;
 
-						var direction;
-						if (dx > 0) {
-							direction = "right";
-						} else {
-							direction = "left";
-						}
-
+                        var swiped = velocity > 1 && move.time > 110;
                         if (swiped) {
-                            if (this.dispatch(this.target.node, 'swipe', {direction: direction, originalIndex: originalIndex})) {
+                            if (this.dispatch(this.target.node, 'swipe', {direction: move.directionX, originalIndex: originalIndex})) {
                                 swipeSuccess = true; // can't animate here, leaveState overrides anim
                             }
                         }
