@@ -241,7 +241,7 @@ window['Slip'] = (function(){
                         var move = this.getAbsoluteMovement();
 
                         if (move.x > 20 && move.y < Math.max(100, this.target.height)) {
-                            if (this.dispatch(this.target.originalTarget, 'beforeswipe')) {
+                            if (this.dispatch(this.target.originalTarget, 'beforeswipe', {directionX: move.directionX, directionY: move.directionY})) {
                                 this.setState(this.states.swipe);
                                 return false;
                             } else {
@@ -709,8 +709,8 @@ window['Slip'] = (function(){
                 x: Math.abs(this.latestPosition.x - this.startPosition.x),
                 y: Math.abs(this.latestPosition.y - this.startPosition.y),
                 time:this.latestPosition.time - this.startPosition.time,
-                xDirection:this.latestPosition.x - this.startPosition.x < 0 ? 'left' : 'right',
-                yDirection:this.latestPosition.y - this.startPosition.y < 0 ? 'up' : 'down',
+                directionX:this.latestPosition.x - this.startPosition.x < 0 ? 'left' : 'right',
+                directionY:this.latestPosition.y - this.startPosition.y < 0 ? 'up' : 'down',
             };
         },
 
