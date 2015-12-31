@@ -1,11 +1,11 @@
 # Slip
 A tiny library for interactive swiping and reordering of elements in lists on touch screens. No dependencies. BSD Licensed.
 
-[Try **live demo**](http://pornel.net/slip/) (best on a touchscreen device)
+[Try **live demo**](https://kornel.ski/slip/) (best on a touchscreen device)
 
 Supports iOS Safari, Firefox Mobile, Chrome Mobile, Opera Mobile (Presto and Blink).
 
-![Demo](http://pornel.net/slip/demo.gif)
+![Demo](https://kornel.ski/slip/demo.gif)
 
 ## Usage
 
@@ -96,7 +96,7 @@ list.addEventListener('slip:reorder', function(e) {
 });
 ```
 
-[See live example](http://pornel.net/slip/).
+[See live example](https://kornel.ski/slip/).
 
 ### CSS
 
