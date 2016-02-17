@@ -572,15 +572,16 @@ window['Slip'] = (function(){
 
         onSelection: function(e) {
             var isRelated = e.target === document || this.findTargetNode(e);
+            var iOS = /(iPhone|iPad|iPod)/i.test(navigator.userAgent) && !/(Android|Windows)/i.test(navigator.userAgent);
             if (!isRelated) return;
 
-            if (e.cancelable || e.defaultPrevented) {
+            if (iOS) {
+                // iOS doesn't allow selection to be prevented
+                this.setState(this.states.idle);
+            } else {
                 if (!this.state.allowTextSelection) {
                     e.preventDefault();
                 }
-            } else {
-                // iOS doesn't allow selection to be prevented
-                this.setState(this.states.idle);
             }
         },
 
