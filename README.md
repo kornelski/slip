@@ -128,6 +128,12 @@ Class `slip-reordering` is set on list element that is being dragged:
 
 iOS also tends to add highlight color to tapped areas. If that bothers you, apply `-webkit-tap-highlight-color: rgba(0,0,0,0);` to tappable elements.
 
+## Accessibility and focus management
+
+In the source code there's an `accessibility` object with settings for enabling ARIA roles on elements and focus when elements are used. Set `focus: true` in that array for potentially improved screen reader use.
+
+Please note that Slip does not support keyboard interaction (pull requests are welcome), so you need to provide your own keyboard-accessible alternative.
+
 ## TODO
 
  * ARIA roles and screen reader testing. Please note that drag'n'drop is very tricky to do with VoiceOver, and for accessibility you need a backup method.

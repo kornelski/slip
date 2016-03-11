@@ -110,12 +110,12 @@ window['Slip'] = (function(){
         container: {
             ariaRole: "listbox",
             tabIndex: 0,
-            focus: true, // focuses after drop
+            focus: false, // focuses after drop
         },
         items: {
             ariaRole: "option", // If "option" flattens items, try "group": https://www.marcozehe.de/2013/03/08/sometimes-you-have-to-use-illegal-wai-aria-to-make-stuff-work/
             tabIndex: -1, // 0 will make every item tabbable, which isn't always useful
-            focus: true, // focuses when dragging
+            focus: false, // focuses when dragging
         },
     };
 
