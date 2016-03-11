@@ -127,17 +127,17 @@ window['Slip'] = (function(){
     var compositorDoesNotOrderLayers = damnYouChrome;
 
     // -webkit-mess
-    var testElement = document.createElement('div');
+    var testElementStyle = document.createElement('div').style;
 
-    var transitionJSPropertyName = "webkitTransition" in testElement.style ? "webkitTransition" : "transition";
-    var transformJSPropertyName = "webkitTransform" in testElement.style ? "webkitTransform" : "transform";
+    var transitionJSPropertyName = "transition" in testElementStyle ? "transition" : "webkitTransition";
+    var transformJSPropertyName = "transform" in testElementStyle ? "transform" : "webkitTransform";
     var transformCSSPropertyName = transformJSPropertyName === "webkitTransform" ? "-webkit-transform" : "transform";
-    var userSelectJSPropertyName = "webkitUserSelect" in testElement.style ? "webkitUserSelect" : "userSelect";
+    var userSelectJSPropertyName = "userSelect" in testElementStyle ? "userSelect" : "webkitUserSelect";
 
-    testElement.style[transformJSPropertyName] = 'translateZ(0)';
-    var hwLayerMagicStyle = testElement.style[transformJSPropertyName] ? 'translateZ(0) ' : '';
-    var hwTopLayerMagicStyle = testElement.style[transformJSPropertyName] ? 'translateZ(1px) ' : '';
-    testElement = null;
+    testElementStyle[transformJSPropertyName] = 'translateZ(0)';
+    var hwLayerMagicStyle = testElementStyle[transformJSPropertyName] ? 'translateZ(0) ' : '';
+    var hwTopLayerMagicStyle = testElementStyle[transformJSPropertyName] ? 'translateZ(1px) ' : '';
+    testElementStyle = null;
 
     var globalInstances = 0;
     var attachedBodyHandlerHack = false;
