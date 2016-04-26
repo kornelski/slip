@@ -454,21 +454,25 @@ window['Slip'] = (function(){
 
                     onEnd: function() {
                         var move = this.getTotalMovement();
+                        var i, spliceIndex;
                         if (move.y < 0) {
-                            for(var i=0; i < otherNodes.length; i++) {
+                            for (i=0; i < otherNodes.length; i++) {
                                 if (otherNodes[i].pos > move.y) {
-                                    this.dispatch(this.target.node, 'reorder', {spliceIndex:i, insertBefore:otherNodes[i].node, originalIndex: originalIndex});
                                     break;
                                 }
                             }
+                            spliceIndex = i;
                         } else {
-                            for(var i=otherNodes.length-1; i >= 0; i--) {
+                            for (i=otherNodes.length-1; i >= 0; i--) {
                                 if (otherNodes[i].pos < move.y) {
-                                    this.dispatch(this.target.node, 'reorder', {spliceIndex:i+1, insertBefore:otherNodes[i+1] ? otherNodes[i+1].node : null, originalIndex: originalIndex});
                                     break;
                                 }
                             }
+                            spliceIndex = i+1;
                         }
+
+                        this.dispatch(this.target.node, 'reorder', {spliceIndex:spliceIndex, insertBefore:otherNodes[spliceIndex] ? otherNodes[spliceIndex].node : null, originalIndex: originalIndex});
+
                         this.setState(this.states.idle);
                         return false;
                     },
