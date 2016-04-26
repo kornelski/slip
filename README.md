@@ -23,6 +23,10 @@ You interact with the library via custom DOM events for swipes/reordering.  Call
     If you execute `event.preventDefault()` then the element will not move at all.
     Parent element will have class `slip-swiping-container` for duration of the animation.
 
+* `slip:cancelswipe`
+
+    Fired after the user has started to swipe, but lets go without actually swiping left or right.
+
 * `slip:reorder`
 
     Element has been dropped in new location. `event.detail` contains the location:
@@ -44,10 +48,6 @@ You interact with the library via custom DOM events for swipes/reordering.  Call
 * `slip:tap`
 
     When element was tapped without being swiped/reordered.
-
-* `slip:cancelswipe`
-
-    Fired when the user stops dragging and the element returns to its original position.
 
 ### Example
 
