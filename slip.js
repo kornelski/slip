@@ -665,8 +665,9 @@ window['Slip'] = (function(){
             //check for a scrollable parent
             var scrollContainer = targetNode.parentNode;
             while (scrollContainer){
+              if (scrollContainer == document.body) break;
               if (scrollContainer.scrollHeight > scrollContainer.clientHeight && window.getComputedStyle(scrollContainer)['overflow-y'] != 'visible') break;
-              else scrollContainer = scrollContainer.parentNode;
+              scrollContainer = scrollContainer.parentNode;
             }
 
             this.target = {
