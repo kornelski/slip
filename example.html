@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf8">
+<title>Slip.js — sortable and swipeable views</title>
+<meta name="viewport" content="width=device-width, user-scalable=no, maximum-scale=1.0">
+<style>
+/* these are special */
+.slip-reordering {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.45);
+}
+
+.slip-swiping-container {
+    overflow-x: hidden;
+}
+
+#slippylist li {
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+}
+
+/* the rest is junk for the demo page */
+#slippylist li.demo-allow-select {
+    padding: 1em;
+    line-height: 1.3;
+    user-select: text;
+    -moz-user-select: text;
+    -webkit-user-select: text;
+}
+#slippylist li.demo-allow-select span {
+    cursor: text;
+}
+
+body {
+    background: #eee;
+    font-family: Helvetica, Arial, sans-serif;
+    max-width: 40em;
+    margin: 0 auto;
+    padding: 5px;
+}
+
+#slippylist {
+    clear:left;
+    margin: 1em;
+    padding: 0 0 1px;
+}
+
+#slippylist li {
+    display:block;
+    border: 1px solid black;
+    background: white;
+    margin: 0; padding: 0 1em;
+    border-radius: 3px;
+    margin-bottom: -1px;
+    max-width: 100%;
+    line-height: 3;
+    vertical-align: middle;
+}
+
+#slippylist input {
+    vertical-align: middle;
+}
+
+#slippylist .instant::after {
+    content: " \2261";
+}
+#slippylist .instant {
+    float: right;
+}
+
+.skewed {
+    transform: rotate(2deg) scale(0.99);
+    -webkit-transform: rotate(2deg) scale(0.99);
+}
+
+.demo-no-swipe.demo-no-reorder {
+    opacity: 0.5;
+}
+
+h1, h2 {
+    color: #666;
+}
+h1 {
+    float:left; margin-top: 0; margin-right: 1ex;
+}
+h1+p {
+    overflow:auto; margin-top: 0.2em;
+}
+</style>
+<body>
+<h1>Slip.js</h1>
+<p>Swiping and reordering lists of elements on touch screens, no fuss. A&nbsp;tiny library by <a href="//twitter.com/kornelski">Kornel</a>.</p>
+<ol id="slippylist">
+    <li class="demo-no-reorder">Swipe,</li>
+    <li class="demo-no-swipe">hold &amp; reorder <span class="instant">or instantly</span></li>
+    <li>or either</li>
+    <li class="demo-no-swipe demo-no-reorder">or none of them.</li>
+    <li>Can play nicely with:</li>
+    <li>interaction <input type="range"></li>
+    <li style="transform: scaleX(0.97) skewX(-10deg); -webkit-transform: scaleX(0.97) skewX(-10deg)">inline CSS transforms</li>
+    <li class="skewed">stylesheet transforms</li>
+    <li class="demo-allow-select"><span class="demo-no-reorder">and selectable text, even though animating elements with selected text is a bit weird.</span></li>
+    <li>iOS Safari</li>
+    <li>Mobile Chrome</li>
+    <li>Android Firefox</li>
+    <li>Opera Presto and Blink</li>
+    <li>No dependencies</li>
+</ol>
+<h2>Known limitations</h2>
+<ul>
+    <li>Tap &amp; hold is too sensitive in Firefox (W3C TouchEvents specification is ambiguous about sensitivity of touch movements, so strictly speaking that's a spec bug, not a browser bug.)</li>
+    <li>There are few bits in animations that could be smoother or more efficient.</li>
+</ul>
+<p><a href="https://github.com/pornel/slip">Bug/fork/star on GitHub</a>.</p>
+<script src="slip.js"></script>
+<script>
+    var ol = document.getElementById('slippylist');
+    ol.addEventListener('slip:beforereorder', function(e){
+        if (/demo-no-reorder/.test(e.target.className)) {
+            e.preventDefault();
+        }
+    }, false);
+
+    ol.addEventListener('slip:beforeswipe', function(e){
+        if (e.target.nodeName == 'INPUT' || /demo-no-swipe/.test(e.target.className)) {
+            e.preventDefault();
+        }
+    }, false);
+
+    ol.addEventListener('slip:beforewait', function(e){
+        if (e.target.className.indexOf('instant') > -1) e.preventDefault();
+    }, false);
+
+    ol.addEventListener('slip:afterswipe', function(e){
+        e.target.parentNode.appendChild(e.target);
+    }, false);
+
+    ol.addEventListener('slip:reorder', function(e){
+        e.target.parentNode.insertBefore(e.target, e.detail.insertBefore);
+        return false;
+    }, false);
+
+    new Slip(ol);
+</script>
