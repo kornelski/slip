@@ -12,6 +12,9 @@
             Fired before first swipe movement starts.
             If you execute event.preventDefault() then element will not move at all.
 
+        • slip:cancelswipe
+            Fired after the user has started to swipe, but lets go without actually swiping left or right.
+
         • slip:reorder
             Element has been dropped in new location. event.detail contains the location:
                 • insertBefore: DOM node before which element has been dropped (null is the end of the list). Use with node.insertBefore().
@@ -28,9 +31,6 @@
 
         • slip:tap
             When element was tapped without being swiped/reordered.
-
-        • slip:cancelswipe
-            Fired when the user stops dragging and the element returns to its original position.
 
 
     Usage:
@@ -318,7 +318,6 @@ window['Slip'] = (function(){
                             }.bind(this));
                         } else {
                             this.animateToZero(removeClass);
-                            this.dispatch(this.target.node, 'cancelswipe');
                         }
                     },
 
@@ -350,6 +349,8 @@ window['Slip'] = (function(){
                             if (this.dispatch(this.target.node, 'swipe', {direction: move.directionX, originalIndex: originalIndex})) {
                                 swipeSuccess = true; // can't animate here, leaveState overrides anim
                             }
+                        } else {
+                            this.dispatch(this.target.node, 'cancelswipe');
                         }
                         this.setState(this.states.idle);
                         return !swiped;
