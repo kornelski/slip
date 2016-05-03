@@ -389,8 +389,10 @@ window['Slip'] = (function(){
                     this.container.style.webkitTransformStyle = 'preserve-3d';
                 }
 
-                function setPosition() {
+                function onMove() {
                     /*jshint validthis:true */
+
+                    this.updateScrolling();
 
                     if (mouseOutsideTimer) {
                         // don't care where the mouse is as long as it moves
@@ -415,7 +417,7 @@ window['Slip'] = (function(){
                     return false;
                 }
 
-                setPosition.call(this);
+                onMove.call(this);
 
                 return {
                     leaveState: function() {
@@ -441,7 +443,7 @@ window['Slip'] = (function(){
                         });
                     },
 
-                    onMove: setPosition,
+                    onMove: onMove,
 
                     onLeave: function() {
                         // don't let element get stuck if mouse left the window
@@ -650,7 +652,7 @@ window['Slip'] = (function(){
 
             this.startAtPosition({
                 x: e.touches[0].clientX,
-                y: e.touches[0].clientY - window.scrollY,
+                y: e.touches[0].clientY,
                 time: e.timeStamp,
             });
         },
@@ -669,11 +671,13 @@ window['Slip'] = (function(){
               if (scrollContainer.scrollHeight > scrollContainer.clientHeight && window.getComputedStyle(scrollContainer)['overflow-y'] != 'visible') break;
               scrollContainer = scrollContainer.parentNode;
             }
+            scrollContainer = scrollContainer || document.body;
 
             this.target = {
                 originalTarget: e.target,
                 node: targetNode,
                 scrollContainer: scrollContainer,
+                origScrollTop: scrollContainer.scrollTop,
                 baseTransform: getTransform(targetNode),
             };
             return true;
@@ -689,26 +693,6 @@ window['Slip'] = (function(){
                 return;
             }
             this.latestPosition = pos;
-
-            var triggerOffset = 40,
-                offset = 0;
-
-            var scrollable = this.target.scrollContainer || document.body,
-                containerRect = scrollable.getBoundingClientRect(),
-                targetRect = this.target.node.getBoundingClientRect(),
-                bottomOffset = Math.min(containerRect.bottom, window.innerHeight) - targetRect.bottom,
-                topOffset = targetRect.top - Math.max(containerRect.top, 0);
-
-            if (bottomOffset < triggerOffset){
-              offset = triggerOffset - bottomOffset;
-            }
-            else if (topOffset < triggerOffset){
-              offset = topOffset - triggerOffset;
-            }
-
-            var prevScrollTop = scrollable.scrollTop;
-            scrollable.scrollTop += offset;
-            if (prevScrollTop != scrollable.scrollTop) this.startPosition.y += prevScrollTop-scrollable.scrollTop;
 
             if (this.state.onMove) {
                 if (this.state.onMove.call(this) === false) {
@@ -733,7 +717,7 @@ window['Slip'] = (function(){
         onTouchMove: function(e) {
             this.updatePosition(e, {
                 x: e.touches[0].clientX,
-                y: e.touches[0].clientY - window.scrollY,
+                y: e.touches[0].clientY,
                 time: e.timeStamp,
             });
 
@@ -758,20 +742,43 @@ window['Slip'] = (function(){
         },
 
         getTotalMovement: function() {
+            var scrollOffset = this.target.scrollContainer.scrollTop - this.target.origScrollTop;
             return {
-                x:this.latestPosition.x - this.startPosition.x,
-                y:this.latestPosition.y - this.startPosition.y,
+                x: this.latestPosition.x - this.startPosition.x,
+                y: this.latestPosition.y - this.startPosition.y + scrollOffset,
+                time: this.latestPosition.time - this.startPosition.time,
             };
         },
 
         getAbsoluteMovement: function() {
+            var move = this.getTotalMovement();
             return {
-                x: Math.abs(this.latestPosition.x - this.startPosition.x),
-                y: Math.abs(this.latestPosition.y - this.startPosition.y),
-                time:this.latestPosition.time - this.startPosition.time,
-                directionX:this.latestPosition.x - this.startPosition.x < 0 ? 'left' : 'right',
-                directionY:this.latestPosition.y - this.startPosition.y < 0 ? 'up' : 'down',
+                x: Math.abs(move.x),
+                y: Math.abs(move.y),
+                time: move.time,
+                directionX: move.x < 0 ? 'left' : 'right',
+                directionY: move.y < 0 ? 'up' : 'down',
             };
+        },
+
+        updateScrolling: function() {
+            var triggerOffset = 40,
+                offset = 0;
+
+            var scrollable = this.target.scrollContainer,
+                containerRect = scrollable.getBoundingClientRect(),
+                targetRect = this.target.node.getBoundingClientRect(),
+                bottomOffset = Math.min(containerRect.bottom, window.innerHeight) - targetRect.bottom,
+                topOffset = targetRect.top - Math.max(containerRect.top, 0);
+
+            if (bottomOffset < triggerOffset) {
+              offset = Math.min(triggerOffset, triggerOffset - bottomOffset);
+            }
+            else if (topOffset < triggerOffset) {
+              offset = Math.max(-triggerOffset, topOffset - triggerOffset);
+            }
+
+            scrollable.scrollTop += offset;
         },
 
         dispatch: function(targetNode, eventName, detail) {
