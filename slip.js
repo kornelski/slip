@@ -15,6 +15,12 @@
         • slip:cancelswipe
             Fired after the user has started to swipe, but lets go without actually swiping left or right.
 
+        • slip:animateswipe
+            Fired while swiping, before the user has let go of the element.
+            event.detail.x contains the amount of movement in the x direction.
+            If you execute event.preventDefault() then the element will not move to this position.
+            This can be useful for saturating the amount of swipe, or preventing movement in one direction, but allowing it in the other.
+
         • slip:reorder
             Element has been dropped in new location. event.detail contains the location:
                 • insertBefore: DOM node before which element has been dropped (null is the end of the list). Use with node.insertBefore().
@@ -325,9 +331,12 @@ window['Slip'] = (function(){
                         var move = this.getTotalMovement();
 
                         if (Math.abs(move.y) < this.target.height+20) {
-                            this.target.node.style[transformJSPropertyName] = 'translate(' + move.x + 'px,0) ' + hwLayerMagicStyle + this.target.baseTransform.value;
+                            if (this.dispatch(this.target.node, 'animateswipe', {x: move.x, originalIndex: originalIndex})) {
+                                this.target.node.style[transformJSPropertyName] = 'translate(' + move.x + 'px,0) ' + hwLayerMagicStyle + this.target.baseTransform.value;
+                            }
                             return false;
                         } else {
+                            this.dispatch(this.target.node, 'cancelswipe');
                             this.setState(this.states.idle);
                         }
                     },
