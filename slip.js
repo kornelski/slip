@@ -336,6 +336,7 @@ window['Slip'] = (function(){
                             }
                             return false;
                         } else {
+                            this.dispatch(this.target.node, 'cancelswipe');
                             this.setState(this.states.idle);
                         }
                     },
