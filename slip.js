@@ -22,21 +22,22 @@
             This can be useful for saturating the amount of swipe, or preventing movement in one direction, but allowing it in the other.
 
         • slip:reorder
-            Element has been dropped in new location. event.detail contains the location:
+            Element has been dropped in new location. event.detail contains the following:
                 • insertBefore: DOM node before which element has been dropped (null is the end of the list). Use with node.insertBefore().
                 • spliceIndex: Index of element before which current element has been dropped, not counting the element iself.
                                For use with Array.splice() if the list is reflecting objects in some array.
+                • originalIndex: The original index of the element before it was reordered.
 
         • slip:beforereorder
             When reordering movement starts.
             Element being reordered gets class `slip-reordering`.
-            If you execute event.preventDefault() then element will not move at all.
+            If you execute event.preventDefault() then the element will not move at all.
 
         • slip:beforewait
             If you execute event.preventDefault() then reordering will begin immediately, blocking ability to scroll the page.
 
         • slip:tap
-            When element was tapped without being swiped/reordered.
+            When element was tapped without being swiped/reordered. You can check `event.target` to limit that behavior to drag handles.
 
 
     Usage:

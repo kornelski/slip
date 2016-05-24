@@ -27,18 +27,25 @@ You interact with the library via custom DOM events for swipes/reordering.  Call
 
     Fired after the user has started to swipe, but lets go without actually swiping left or right.
 
+* `slip:animateswipe`
+
+    Fired while swiping, before the user has let go of the element.
+    `event.detail.x` contains the amount of movement in the x direction.
+    If you execute `event.preventDefault()` then the element will not move to this position.
+    This can be useful for saturating the amount of swipe, or preventing movement in one direction, but allowing it in the other.
+
 * `slip:reorder`
 
-    Element has been dropped in new location. `event.detail` contains the location:
+    Element has been dropped in new location. `event.detail` contains the following:
 
     * `insertBefore`: DOM node before which element has been dropped (`null` is the end of the list). Use with `node.insertBefore()`.
     * `spliceIndex`: Index of element before which current element has been dropped, not counting the element iself. For use with `Array.splice()` if the list is reflecting objects in some array.
-    * `originalIndex`: The original index of the element.
+    * `originalIndex`: The original index of the element before it was reordered.
 
 * `slip:beforereorder`
 
     When reordering movement starts.
-    Element being dragged gets `slip-reordering` class.
+    Element being reordered gets class `slip-reordering`.
     If you execute `event.preventDefault()` then the element will not move at all.
 
 * `slip:beforewait`
@@ -48,6 +55,7 @@ You interact with the library via custom DOM events for swipes/reordering.  Call
 * `slip:tap`
 
     When element was tapped without being swiped/reordered.
+
 
 ### Example
 
@@ -123,6 +131,13 @@ Class `slip-reordering` is set on list element that is being dragged:
 ```css
 .slip-reordering {
     box-shadow: 0 2px 10px rgba(0,0,0,0.45);
+}
+```
+
+When an item is dragged, `z-index` is set to 99999 on the element, so that it floats above the other elements in the list.  In order to make this effective in some browsers, you'll need to set `position: relative` on the list items.
+```css
+li {
+    position: relative;
 }
 ```
 
