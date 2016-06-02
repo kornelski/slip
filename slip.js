@@ -688,6 +688,7 @@ window['Slip'] = (function(){
                 node: targetNode,
                 scrollContainer: scrollContainer,
                 origScrollTop: scrollContainer.scrollTop,
+                origScrollHeight: scrollContainer.scrollHeight,
                 baseTransform: getTransform(targetNode),
             };
             return true;
@@ -779,7 +780,8 @@ window['Slip'] = (function(){
                 containerRect = scrollable.getBoundingClientRect(),
                 targetRect = this.target.node.getBoundingClientRect(),
                 bottomOffset = Math.min(containerRect.bottom, window.innerHeight) - targetRect.bottom,
-                topOffset = targetRect.top - Math.max(containerRect.top, 0);
+                topOffset = targetRect.top - Math.max(containerRect.top, 0),
+                maxScrollTop = this.target.origScrollHeight - Math.min(scrollable.clientHeight, window.innerHeight);
 
             if (bottomOffset < triggerOffset) {
               offset = Math.min(triggerOffset, triggerOffset - bottomOffset);
@@ -788,7 +790,7 @@ window['Slip'] = (function(){
               offset = Math.max(-triggerOffset, topOffset - triggerOffset);
             }
 
-            scrollable.scrollTop += offset;
+            scrollable.scrollTop = Math.max(0, Math.min(maxScrollTop, scrollable.scrollTop + offset));
         },
 
         dispatch: function(targetNode, eventName, detail) {
