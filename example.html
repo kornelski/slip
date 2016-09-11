@@ -149,19 +149,19 @@ h1+p {
 <script>
     function setupSlip(list) {
         list.addEventListener('slip:beforereorder', function(e){
-            if (/demo-no-reorder/.test(e.target.className)) {
+            if (e.target.classList.indexOf('demo-no-reorder') >= 0) {
                 e.preventDefault();
             }
         }, false);
 
         list.addEventListener('slip:beforeswipe', function(e){
-            if (e.target.nodeName == 'INPUT' || /demo-no-swipe/.test(e.target.className)) {
+            if (e.target.nodeName == 'INPUT' || e.target.classList.indexOf('demo-no-swipe') >= 0) {
                 e.preventDefault();
             }
         }, false);
 
         list.addEventListener('slip:beforewait', function(e){
-            if (e.target.className.indexOf('instant') > -1) e.preventDefault();
+            if (e.target.classList.indexOf('instant') >= 0) e.preventDefault();
         }, false);
 
         list.addEventListener('slip:afterswipe', function(e){
