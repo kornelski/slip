@@ -303,9 +303,9 @@ window['Slip'] = (function(){
 
                 var originalIndex = findIndex(this.target, this.container.childNodes);
 
-                container.className += ' slip-swiping-container';
+                container.classList.add('slip-swiping-container');
                 function removeClass() {
-                    container.className = container.className.replace(/(?:^| )slip-swiping-container/,'');
+                    container.classList.remove('slip-swiping-container');
                 }
 
                 this.target.height = this.target.node.offsetHeight;
@@ -391,7 +391,7 @@ window['Slip'] = (function(){
                     });
                 }
 
-                this.target.node.className += ' slip-reordering';
+                this.target.node.classList.add('slip-reordering');
                 this.target.node.style.zIndex = '99999';
                 this.target.node.style[userSelectJSPropertyName] = 'none';
                 if (compositorDoesNotOrderLayers) {
@@ -441,7 +441,7 @@ window['Slip'] = (function(){
                             this.container.focus();
                         }
 
-                        this.target.node.className = this.target.node.className.replace(/(?:^| )slip-reordering/,'');
+                        this.target.node.classList.remove('slip-reordering');
                         this.target.node.style[userSelectJSPropertyName] = '';
 
                         this.animateToZero(function(target){
