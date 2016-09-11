@@ -124,7 +124,7 @@ h1+p {
 <script src="slip.js"></script>
 <script>
     function beforereorder(e) {
-        if (/demo-no-reorder/.test(e.target.className)) {
+        if (e.target.classList.indexOf('demo-no-reorder') >= 0) {
             e.preventDefault();
         }
     }
@@ -145,7 +145,7 @@ h1+p {
     function Attach(e) {
       e.target.removeEventListener('click', Attach, false);
       document.demo1SlipObj = setupSlip(document.getElementById('demo1'));
-      
+
       document.getElementById("detach").addEventListener('click', Detach, false);
     }
 
