@@ -42,6 +42,17 @@ You interact with the library via custom DOM events for swipes/reordering.  Call
     * `spliceIndex`: Index of element before which current element has been dropped, not counting the element iself. For use with `Array.splice()` if the list is reflecting objects in some array.
     * `originalIndex`: The original index of the element before it was reordered.
 
+    You can use it to keep an array of items in sync with their display order:
+
+    ```js
+    const movedItem = itemsArray[event.detail.originalIndex];
+    itemsArray.splice(event.detail.originalIndex, 1); // Remove item from the previous position
+    itemsArray.splice(event.detail.spliceIndex, 0, movedItem); // Insert item in the new position
+
+    // And update the DOM:
+    e.target.parentNode.insertBefore(e.target, e.detail.insertBefore);
+    ```
+
 * `slip:beforereorder`
 
     When reordering movement starts.
