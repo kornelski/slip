@@ -484,7 +484,11 @@ window['Slip'] = (function(){
                             spliceIndex = i+1;
                         }
 
-                        this.dispatch(this.target.node, 'reorder', {spliceIndex:spliceIndex, insertBefore:otherNodes[spliceIndex] ? otherNodes[spliceIndex].node : null, originalIndex: originalIndex});
+                        this.dispatch(this.target.node, 'reorder', {
+                            spliceIndex:spliceIndex,
+                            originalIndex: originalIndex,
+                            insertBefore:otherNodes[spliceIndex] ? otherNodes[spliceIndex].node : null,
+                        });
 
                         this.setState(this.states.idle);
                         return false;
