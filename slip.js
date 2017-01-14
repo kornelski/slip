@@ -181,8 +181,8 @@ window['Slip'] = (function(){
         var transform = node.style[transformJSPropertyName];
         if (transform) {
             return {
-                value:transform,
-                original:transform,
+                value: transform,
+                original: transform,
             };
         }
 
@@ -247,9 +247,9 @@ window['Slip'] = (function(){
                 this.target.node.style[transitionJSPropertyName] = '';
 
                 if (!this.dispatch(this.target.originalTarget, 'beforewait')) {
-                  if (this.dispatch(this.target.originalTarget, 'beforereorder')) {
-                    this.setState(this.states.reorder);
-                  }
+                    if (this.dispatch(this.target.originalTarget, 'beforereorder')) {
+                        this.setState(this.states.reorder);
+                    }
                 } else {
                     var holdTimer = setTimeout(function(){
                         var move = this.getAbsoluteMovement();
@@ -485,9 +485,9 @@ window['Slip'] = (function(){
                         }
 
                         this.dispatch(this.target.node, 'reorder', {
-                            spliceIndex:spliceIndex,
+                            spliceIndex: spliceIndex,
                             originalIndex: originalIndex,
-                            insertBefore:otherNodes[spliceIndex] ? otherNodes[spliceIndex].node : null,
+                            insertBefore: otherNodes[spliceIndex] ? otherNodes[spliceIndex].node : null,
                         });
 
                         this.setState(this.states.idle);
@@ -700,10 +700,10 @@ window['Slip'] = (function(){
 
             //check for a scrollable parent
             var scrollContainer = targetNode.parentNode;
-            while (scrollContainer){
-              if (scrollContainer == document.body) break;
-              if (scrollContainer.scrollHeight > scrollContainer.clientHeight && window.getComputedStyle(scrollContainer)['overflow-y'] != 'visible') break;
-              scrollContainer = scrollContainer.parentNode;
+            while (scrollContainer) {
+                if (scrollContainer == document.body) break;
+                if (scrollContainer.scrollHeight > scrollContainer.clientHeight && window.getComputedStyle(scrollContainer)['overflow-y'] != 'visible') break;
+                scrollContainer = scrollContainer.parentNode;
             }
             scrollContainer = scrollContainer || document.body;
 
@@ -880,7 +880,7 @@ window['Slip'] = (function(){
                                 o.node.style[transitionJSPropertyName] = '';
                                 o.node.style[transformJSPropertyName] = o.baseTransform.original;
                             });
-                        },101);
+                        }, 101);
                     }, 1);
                 }
             }.bind(this), 101);
