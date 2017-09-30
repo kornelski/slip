@@ -9,6 +9,11 @@ Supports iOS Safari, Firefox Mobile, Chrome Mobile, Opera Mobile (Presto and Bli
 
 ## Usage
 
+To get started include this in your html:
+```
+<script src="https://cdn.jsdelivr.net/npm/slipjs@2/slip.js"></script>
+```
+
 You interact with the library via custom DOM events for swipes/reordering.  Call `new Slip(<element>)` to make element's children swipeable and add event listeners for any of the following events:
 
 * `slip:swipe`
