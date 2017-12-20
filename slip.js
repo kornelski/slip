@@ -893,6 +893,10 @@ window['Slip'] = (function(){
             return Slip;
         });
     }
+    // CJS
+    if ('object' === typeof module && module.exports) {
+        module.exports = Slip;
+    }
     return Slip;
 })();
 
