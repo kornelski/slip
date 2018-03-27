@@ -139,6 +139,25 @@ h1+p {
     <li>No dependencies</li>
 </ol>
 </div>
+
+<h3>Demo of nested list</h3>
+<ol id="demo3" class="slippylist">
+    <li class="demo-no-reorder">Swipe,</li>
+    <li class="demo-no-swipe">hold &amp; reorder <span class="instant">or instantly</span></li>
+    <li class="demo-no-swipe demo-no-reorder">or none of them.</li>
+    <li style="transform: scaleX(0.97) skewX(-10deg); -webkit-transform: scaleX(0.97) skewX(-10deg)">inline CSS transforms</li>
+    <li class="skewed">stylesheet transforms</li>
+    <li>
+        <ol id="demo-nested" class="slippylist">
+            <li>We are</li>
+            <li>a nested list</li>
+            <li>with ordering and swipe support</li>
+        </ol>
+    </li>
+    <li>Mobile Chrome</li>
+</ol>
+
+
 <h2>Known limitations</h2>
 <ul>
     <li>Tap &amp; hold is too sensitive in Firefox (W3C TouchEvents specification is ambiguous about sensitivity of touch movements, so strictly speaking that's a spec bug, not a browser bug.)</li>
@@ -176,5 +195,7 @@ h1+p {
     }
     setupSlip(document.getElementById('demo1'));
     setupSlip(document.getElementById('demo2'));
+    setupSlip(document.getElementById('demo3'));
+    setupSlip(document.getElementById('demo-nested'));
 
 </script>
