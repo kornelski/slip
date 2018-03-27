@@ -583,6 +583,7 @@ window['Slip'] = (function(){
         },
 
         onContainerFocus: function(e) {
+            e.stopPropagation();
             this.setChildNodesAriaRoles();
         },
 
@@ -612,6 +613,7 @@ window['Slip'] = (function(){
             }
         },
         onSelection: function(e) {
+            e.stopPropagation();
             var isRelated = e.target === document || this.findTargetNode(e);
             var iOS = /(iPhone|iPad|iPod)/i.test(navigator.userAgent) && !/(Android|Windows)/i.test(navigator.userAgent);
             if (!isRelated) return;
@@ -649,6 +651,7 @@ window['Slip'] = (function(){
         },
 
         onMouseLeave: function(e) {
+            e.stopPropagation();
             if (this.usingTouch) return;
 
             if (e.target === document.documentElement || e.relatedTarget === document.documentElement) {
@@ -659,6 +662,7 @@ window['Slip'] = (function(){
         },
 
         onMouseDown: function(e) {
+            e.stopPropagation();
             if (this.usingTouch || e.button != 0 || !this.setTarget(e)) return;
 
             this.addMouseHandlers(); // mouseup, etc.
@@ -673,6 +677,7 @@ window['Slip'] = (function(){
         },
 
         onTouchStart: function(e) {
+            e.stopPropagation();
             this.usingTouch = true;
             this.canPreventScrolling = true;
 
@@ -742,6 +747,7 @@ window['Slip'] = (function(){
         },
 
         onMouseMove: function(e) {
+            e.stopPropagation();
             this.updatePosition(e, {
                 x: e.clientX,
                 y: e.clientY,
@@ -750,6 +756,7 @@ window['Slip'] = (function(){
         },
 
         onTouchMove: function(e) {
+            e.stopPropagation();
             this.updatePosition(e, {
                 x: e.touches[0].clientX,
                 y: e.touches[0].clientY,
@@ -761,6 +768,7 @@ window['Slip'] = (function(){
         },
 
         onMouseUp: function(e) {
+            e.stopPropagation();
             if (this.usingTouch || e.button !== 0) return;
 
             if (this.state.onEnd && false === this.state.onEnd.call(this)) {
@@ -769,6 +777,7 @@ window['Slip'] = (function(){
         },
 
         onTouchEnd: function(e) {
+            e.stopPropagation();
             if (e.touches.length > 1) {
                 this.cancel();
             } else if (this.state.onEnd && false === this.state.onEnd.call(this)) {
