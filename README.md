@@ -154,6 +154,17 @@ li {
 
 iOS also tends to add highlight color to tapped areas. If that bothers you, apply `-webkit-tap-highlight-color: rgba(0,0,0,0);` to tappable elements.
 
+## Configuration
+
+You can also provide an options object when initialising Slip:
+
+```js
+new Slip(element, {
+    ignoredElements: '#imnothere' // Allows you to provide any valid CSS selector, elements matching it will be ignored by Slip.
+        // Useful when you have invisible elements in your container but will cause bugs when used on visible items.
+})
+```
+
 ## Accessibility and focus management
 
 In the source code there's an `accessibility` object with settings for enabling ARIA roles on elements and focus when elements are used. Set `focus: true` in that array for potentially improved screen reader use.
