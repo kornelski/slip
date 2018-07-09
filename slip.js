@@ -160,6 +160,9 @@ window['Slip'] = (function(){
         this.options.keepSwipingPercent = options.keepSwipingPercent || 0;
         this.options.minimumSwipeVelocity = options.minimumSwipeVelocity || 1;
         this.options.minimumSwipeTime = options.minimumSwipeTime || 110;
+        this.options.ignoredElements = options.ignoredElements || [];
+
+        if (!Array.isArray(this.options.ignoredElements)) throw new Error("ignoredElements must be an Array");
 
         // Functions used for as event handlers need usable `this` and must not change to be removable
         this.cancel = this.setState.bind(this, this.states.idle);
@@ -375,7 +378,30 @@ window['Slip'] = (function(){
 
                 this.target.height = this.target.node.offsetHeight;
 
-                var nodes = this.container.childNodes;
+                var nodes;
+                if (this.options.ignoredElements.length) {
+                    var container = this.container;
+                    var query = container.tagName.toLowerCase();
+                    if (container.getAttribute('id')) {
+                        query = '#' + container.getAttribute('id');
+                    } else if (container.classList.length) {
+                        query += '.' + container.getAttribute('class').replace(' ', '.');
+                    }
+                    query += ' > ';
+                    this.options.ignoredElements.forEach(function (selector) {
+                        query += ':not(' + selector + ')';
+                    });
+                    try {
+                        nodes = container.parentNode.querySelectorAll(query);
+                    } catch(err) {
+                        if (err instanceof DOMException && err.name === 'SyntaxError')
+                            throw new Error('ignoredElements you specified contain invalid query');
+                        else
+                            throw err;
+                    }
+                } else {
+                    nodes = this.container.childNodes;
+                }
                 var originalIndex = findIndex(this.target, nodes);
                 var mouseOutsideTimer;
                 var zero = this.target.node.offsetTop + this.target.height/2;
