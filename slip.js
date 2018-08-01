@@ -162,6 +162,7 @@ window['Slip'] = (function(){
         this.options.minimumSwipeTime = options.minimumSwipeTime || 110;
         this.options.ignoredElements = options.ignoredElements || [];
         this.options.stopPropagation = options.stopPropagation === undefined || !!options.stopPropagation;
+        this.options.filterCallback = options.filterCallback;
 
         if (!Array.isArray(this.options.ignoredElements)) throw new Error("ignoredElements must be an Array");
 
@@ -250,19 +251,21 @@ window['Slip'] = (function(){
                 this.target.node.style.willChange = transformCSSPropertyName;
                 this.target.node.style[transitionJSPropertyName] = '';
 
-                if (!this.dispatch(this.target.originalTarget, 'beforewait')) {
-                    if (this.dispatch(this.target.originalTarget, 'beforereorder')) {
-                        this.setState(this.states.reorder);
-                    }
-                } else {
-                    var holdTimer = setTimeout(function(){
-                        var move = this.getAbsoluteMovement();
-                        if (this.canPreventScrolling && move.x < 15 && move.y < 25) {
-                            if (this.dispatch(this.target.originalTarget, 'beforereorder')) {
-                                this.setState(this.states.reorder);
-                            }
+                if (!this.options.filterCallback || this.options.filterCallback(this.target.originalTarget)) {
+                    if (!this.dispatch(this.target.originalTarget, 'beforewait')) {
+                        if (this.dispatch(this.target.originalTarget, 'beforereorder')) {
+                            this.setState(this.states.reorder);
                         }
-                    }.bind(this), 300);
+                    } else {
+                        var holdTimer = setTimeout(function(){
+                            var move = this.getAbsoluteMovement();
+                            if (this.canPreventScrolling && move.x < 15 && move.y < 25) {
+                                if (this.dispatch(this.target.originalTarget, 'beforereorder')) {
+                                    this.setState(this.states.reorder);
+                                }
+                            }
+                        }.bind(this), 300);
+                    }
                 }
 
                 return {
