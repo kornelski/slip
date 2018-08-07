@@ -112,6 +112,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 exports.Slip = function () {
+    var _this = this;
     var accessibility = {
         // Set values to false if you don't want Slip to manage them
         container: {
@@ -277,57 +278,55 @@ exports.Slip = function () {
             },
             swipe: function () {
                 var swipeSuccess = false;
-                var container = this.container;
-                var originalIndex = findIndex(this.target, this.container.childNodes);
+                var container = _this.container;
+                var originalIndex = findIndex(_this.target, _this.container.childNodes);
                 container.classList.add('slip-swiping-container');
                 var removeClass = function () { return container.classList.remove('slip-swiping-container'); };
-                this.target.height = this.target.node.offsetHeight;
+                _this.target.height = _this.target.node.offsetHeight;
                 return {
                     leaveState: function () {
                         if (swipeSuccess) {
-                            this.animateSwipe(function (target) {
+                            _this.animateSwipe(function (target) {
                                 target.node.style[transformJSPropertyName] = target.baseTransform.original;
                                 target.node.style[transitionJSPropertyName] = '';
-                                if (this.dispatch(target.node, 'afterswipe')) {
+                                if (_this.dispatch(target.node, 'afterswipe')) {
                                     removeClass();
                                     return true;
                                 }
                                 else {
-                                    this.animateToZero(undefined, target);
+                                    _this.animateToZero(undefined, target);
                                 }
-                            }.bind(this));
+                            });
                         }
                         else {
-                            this.animateToZero(removeClass);
+                            _this.animateToZero(removeClass);
                         }
                     },
                     onMove: function () {
-                        var move = this.getTotalMovement();
-                        if (Math.abs(move.y) < this.target.height + 20) {
-                            if (this.dispatch(this.target.node, 'animateswipe', {
+                        var move = _this.getTotalMovement();
+                        if (Math.abs(move.y) < _this.target.height + 20) {
+                            if (_this.dispatch(_this.target.node, 'animateswipe', {
                                 x: move.x,
                                 originalIndex: originalIndex
                             })) {
-                                this.target.node.style[transformJSPropertyName] = 'translate(' + move.x + 'px,0) ' + hwLayerMagicStyle + this.target.baseTransform.value;
+                                _this.target.node.style[transformJSPropertyName] = 'translate(' + move.x + 'px,0) ' + hwLayerMagicStyle + _this.target.baseTransform.value;
                             }
                             return false;
                         }
                         else {
-                            this.dispatch(this.target.node, 'cancelswipe');
-                            this.setState(this.states.idle);
+                            _this.dispatch(_this.target.node, 'cancelswipe');
+                            _this.setState(_this.states.idle);
                         }
                     },
-                    onLeave: function () {
-                        this.state.onEnd.call(this);
-                    },
+                    onLeave: _this.state.onEnd,
                     onEnd: function () {
-                        var move = this.getAbsoluteMovement();
+                        var move = _this.getAbsoluteMovement();
                         var velocity = move.x / move.time;
                         // How far out has the item been swiped?
-                        var swipedPercent = Math.abs((this.startPosition.x - this.previousPosition.x) / this.container.clientWidth) * 100;
-                        var swiped = (velocity > this.options.minimumSwipeVelocity && move.time > this.options.minimumSwipeTime) || (this.options.keepSwipingPercent && swipedPercent > this.options.keepSwipingPercent);
+                        var swipedPercent = Math.abs((_this.startPosition.x - _this.previousPosition.x) / _this.container.clientWidth) * 100;
+                        var swiped = (velocity > _this.options.minimumSwipeVelocity && move.time > _this.options.minimumSwipeTime) || (_this.options.keepSwipingPercent && swipedPercent > _this.options.keepSwipingPercent);
                         if (swiped) {
-                            if (this.dispatch(this.target.node, 'swipe', {
+                            if (_this.dispatch(_this.target.node, 'swipe', {
                                 direction: move.directionX,
                                 originalIndex: originalIndex
                             })) {
@@ -335,30 +334,31 @@ exports.Slip = function () {
                             }
                         }
                         else {
-                            this.dispatch(this.target.node, 'cancelswipe');
+                            _this.dispatch(_this.target.node, 'cancelswipe');
                         }
-                        this.setState(this.states.idle);
+                        _this.setState(_this.states.idle);
                         return !swiped;
                     },
                 };
             },
-            reorder: function reorderStateInit() {
-                if (this.target.node.focus && accessibility.items.focus) {
-                    this.target.node.focus();
+            reorder: function () {
+                if (_this.target.node.focus && accessibility.items.focus) {
+                    _this.target.node.focus();
                 }
-                this.target.height = this.target.node.offsetHeight;
+                _this.target.height = _this.target.node.offsetHeight;
                 var nodes;
-                if (this.options.ignoredElements.length) {
-                    var container = this.container;
+                if (_this.options.ignoredElements.length) {
+                    var container = _this.container;
                     var query_1 = container.tagName.toLowerCase();
                     if (container.getAttribute('id')) {
                         query_1 = '#' + container.getAttribute('id');
                     }
                     else if (container.classList.length) {
-                        query_1 += '.' + container.getAttribute('class').replace(' ', '.');
+                        query_1 += '.' + container.getAttribute('class')
+                            .replace(' ', '.');
                     }
                     query_1 += ' > ';
-                    this.options.ignoredElements.forEach(function (selector) {
+                    _this.options.ignoredElements.forEach(function (selector) {
                         query_1 += ':not(' + selector + ')';
                     });
                     try {
@@ -372,14 +372,14 @@ exports.Slip = function () {
                     }
                 }
                 else {
-                    nodes = this.container.childNodes;
+                    nodes = _this.container.childNodes;
                 }
-                var originalIndex = findIndex(this.target, nodes);
+                var originalIndex = findIndex(_this.target, nodes);
                 var mouseOutsideTimer;
-                var zero = this.target.node.offsetTop + this.target.height / 2;
+                var zero = _this.target.node.offsetTop + _this.target.height / 2;
                 var otherNodes = [];
                 for (var i = 0; i < nodes.length; i++) {
-                    if (nodes[i].nodeType != 1 || nodes[i] === this.target.node)
+                    if (nodes[i].nodeType != 1 || nodes[i] === _this.target.node)
                         continue;
                     var t = nodes[i].offsetTop;
                     nodes[i].style[transitionJSPropertyName] = transformCSSPropertyName + ' 0.2s ease-in-out';
@@ -389,24 +389,24 @@ exports.Slip = function () {
                         pos: t + (t < zero ? nodes[i].offsetHeight : 0) - zero,
                     });
                 }
-                this.target.node.classList.add('slip-reordering');
-                this.target.node.style.zIndex = '99999';
-                this.target.node.style[userSelectJSPropertyName] = 'none';
+                _this.target.node.classList.add('slip-reordering');
+                _this.target.node.style.zIndex = '99999';
+                _this.target.node.style[userSelectJSPropertyName] = 'none';
                 if (compositorDoesNotOrderLayers) {
                     // Chrome's compositor doesn't sort 2D layers
-                    this.container.style.webkitTransformStyle = 'preserve-3d';
+                    _this.container.style.webkitTransformStyle = 'preserve-3d';
                 }
-                function onMove() {
+                var onMove = function () {
                     /*jshint validthis:true */
-                    this.updateScrolling();
+                    _this.updateScrolling();
                     if (mouseOutsideTimer) {
                         // don't care where the mouse is as long as it moves
                         clearTimeout(mouseOutsideTimer);
                         mouseOutsideTimer = null;
                     }
-                    var move = this.getTotalMovement();
-                    this.target.node.style[transformJSPropertyName] = 'translate(0,' + move.y + 'px) ' + hwTopLayerMagicStyle + this.target.baseTransform.value;
-                    var height = this.target.height;
+                    var move = _this.getTotalMovement();
+                    _this.target.node.style[transformJSPropertyName] = 'translate(0,' + move.y + 'px) ' + hwTopLayerMagicStyle + _this.target.baseTransform.value;
+                    var height = _this.target.height;
                     otherNodes.forEach(function (o) {
                         var off = 0;
                         if (o.pos < 0 && move.y < 0 && o.pos > move.y) {
@@ -419,23 +419,21 @@ exports.Slip = function () {
                         o.node.style[transformJSPropertyName] = off ? 'translate(0,' + off + 'px) ' + hwLayerMagicStyle + o.baseTransform.value : o.baseTransform.original;
                     });
                     return false;
-                }
-                onMove.call(this);
+                };
+                onMove();
                 return {
                     leaveState: function () {
                         if (mouseOutsideTimer)
                             clearTimeout(mouseOutsideTimer);
                         if (compositorDoesNotOrderLayers) {
-                            this.container.style.webkitTransformStyle = '';
+                            _this.container.style.webkitTransformStyle = '';
                         }
-                        if (this.container.focus && accessibility.container.focus) {
-                            this.container.focus();
+                        if (_this.container.focus && accessibility.container.focus) {
+                            _this.container.focus();
                         }
-                        this.target.node.classList.remove('slip-reordering');
-                        this.target.node.style[userSelectJSPropertyName] = '';
-                        this.animateToZero(function (target) {
-                            target.node.style.zIndex = '';
-                        });
+                        _this.target.node.classList.remove('slip-reordering');
+                        _this.target.node.style[userSelectJSPropertyName] = '';
+                        _this.animateToZero(function (target) { return target.node.style.zIndex = ''; });
                         otherNodes.forEach(function (o) {
                             o.node.style[transformJSPropertyName] = o.baseTransform.original;
                             o.node.style[transitionJSPropertyName] = ''; // FIXME: animate to new position
@@ -449,11 +447,11 @@ exports.Slip = function () {
                             clearTimeout(mouseOutsideTimer);
                         mouseOutsideTimer = setTimeout(function () {
                             mouseOutsideTimer = null;
-                            this.cancel();
-                        }.bind(this), 700);
+                            _this.cancel();
+                        }, 700);
                     },
                     onEnd: function () {
-                        var move = this.getTotalMovement();
+                        var move = _this.getTotalMovement();
                         var i, spliceIndex;
                         if (move.y < 0) {
                             for (i = 0; i < otherNodes.length; i++) {
@@ -471,12 +469,12 @@ exports.Slip = function () {
                             }
                             spliceIndex = i + 1;
                         }
-                        this.dispatch(this.target.node, 'reorder', {
+                        _this.dispatch(_this.target.node, 'reorder', {
                             spliceIndex: spliceIndex,
                             originalIndex: originalIndex,
                             insertBefore: otherNodes[spliceIndex] ? otherNodes[spliceIndex].node : null,
                         });
-                        this.setState(this.states.idle);
+                        _this.setState(_this.states.idle);
                         return false;
                     },
                 };
@@ -484,50 +482,50 @@ exports.Slip = function () {
         },
         attach: function (container) {
             globalInstances++;
-            if (this.container)
-                this.detach();
+            if (_this.container)
+                _this.detach();
             // In some cases taps on list elements send *only* click events and no touch events. Spotted only in Chrome 32+
             // Having event listener on body seems to solve the issue (although AFAIK may disable smooth scrolling as a side-effect)
             if (!attachedBodyHandlerHack && needsBodyHandlerHack) {
                 attachedBodyHandlerHack = true;
                 document.body.addEventListener('touchstart', nullHandler, false);
             }
-            this.container = container;
+            _this.container = container;
             // Accessibility
             if (false !== accessibility.container.tabIndex) {
-                this.container.tabIndex = accessibility.container.tabIndex;
+                _this.container.tabIndex = accessibility.container.tabIndex;
             }
             if (accessibility.container.ariaRole) {
-                this.container.setAttribute('aria-role', accessibility.container.ariaRole);
+                _this.container.setAttribute('aria-role', accessibility.container.ariaRole);
             }
-            this.setChildNodesAriaRoles();
-            this.container.addEventListener('focus', this.onContainerFocus, false);
-            this.otherNodes = [];
+            _this.setChildNodesAriaRoles();
+            _this.container.addEventListener('focus', _this.onContainerFocus, false);
+            _this.otherNodes = [];
             // selection on iOS interferes with reordering
-            document.addEventListener('selectionchange', this.onSelection, false);
+            document.addEventListener('selectionchange', _this.onSelection, false);
             // cancel is called e.g. when iOS detects multitasking gesture
-            this.container.addEventListener('touchcancel', this.cancel, false);
-            this.container.addEventListener('touchstart', this.onTouchStart, false);
-            this.container.addEventListener('touchmove', this.onTouchMove, false);
-            this.container.addEventListener('touchend', this.onTouchEnd, false);
-            this.container.addEventListener('mousedown', this.onMouseDown, false);
+            _this.container.addEventListener('touchcancel', _this.cancel, false);
+            _this.container.addEventListener('touchstart', _this.onTouchStart, false);
+            _this.container.addEventListener('touchmove', _this.onTouchMove, false);
+            _this.container.addEventListener('touchend', _this.onTouchEnd, false);
+            _this.container.addEventListener('mousedown', _this.onMouseDown, false);
             // mousemove and mouseup are attached dynamically
         },
         detach: function () {
-            this.cancel();
-            this.container.removeEventListener('mousedown', this.onMouseDown, false);
-            this.container.removeEventListener('touchend', this.onTouchEnd, false);
-            this.container.removeEventListener('touchmove', this.onTouchMove, false);
-            this.container.removeEventListener('touchstart', this.onTouchStart, false);
-            this.container.removeEventListener('touchcancel', this.cancel, false);
-            document.removeEventListener('selectionchange', this.onSelection, false);
+            _this.cancel();
+            _this.container.removeEventListener('mousedown', _this.onMouseDown, false);
+            _this.container.removeEventListener('touchend', _this.onTouchEnd, false);
+            _this.container.removeEventListener('touchmove', _this.onTouchMove, false);
+            _this.container.removeEventListener('touchstart', _this.onTouchStart, false);
+            _this.container.removeEventListener('touchcancel', _this.cancel, false);
+            document.removeEventListener('selectionchange', _this.onSelection, false);
             if (false !== accessibility.container.tabIndex) {
-                this.container.removeAttribute('tabIndex');
+                _this.container.removeAttribute('tabIndex');
             }
             if (accessibility.container.ariaRole) {
-                this.container.removeAttribute('aria-role');
+                _this.container.removeAttribute('aria-role');
             }
-            this.unSetChildNodesAriaRoles();
+            _this.unSetChildNodesAriaRoles();
             globalInstances--;
             if (!globalInstances && attachedBodyHandlerHack) {
                 attachedBodyHandlerHack = false;
@@ -560,7 +558,7 @@ exports.Slip = function () {
             this.setChildNodesAriaRoles();
         },
         setChildNodesAriaRoles: function () {
-            var nodes = this.container.childNodes;
+            var nodes = _this.container.childNodes;
             for (var i = 0; i < nodes.length; i++) {
                 if (nodes[i].nodeType != 1)
                     continue;
@@ -573,7 +571,7 @@ exports.Slip = function () {
             }
         },
         unSetChildNodesAriaRoles: function () {
-            var nodes = this.container.childNodes;
+            var nodes = _this.container.childNodes;
             for (var i = 0; i < nodes.length; i++) {
                 if (nodes[i].nodeType != 1)
                     continue;
@@ -604,21 +602,21 @@ exports.Slip = function () {
         addMouseHandlers: function () {
             // unlike touch events, mousemove/up is not conveniently fired on the same element,
             // but I don't need to listen to unrelated events all the time
-            if (!this.mouseHandlersAttached) {
-                this.mouseHandlersAttached = true;
-                document.documentElement.addEventListener('mouseleave', this.onMouseLeave, false);
-                window.addEventListener('mousemove', this.onMouseMove, true);
-                window.addEventListener('mouseup', this.onMouseUp, true);
-                window.addEventListener('blur', this.cancel, false);
+            if (!_this.mouseHandlersAttached) {
+                _this.mouseHandlersAttached = true;
+                document.documentElement.addEventListener('mouseleave', _this.onMouseLeave, false);
+                window.addEventListener('mousemove', _this.onMouseMove, true);
+                window.addEventListener('mouseup', _this.onMouseUp, true);
+                window.addEventListener('blur', _this.cancel, false);
             }
         },
         removeMouseHandlers: function () {
-            if (this.mouseHandlersAttached) {
-                this.mouseHandlersAttached = false;
-                document.documentElement.removeEventListener('mouseleave', this.onMouseLeave, false);
-                window.removeEventListener('mousemove', this.onMouseMove, true);
-                window.removeEventListener('mouseup', this.onMouseUp, true);
-                window.removeEventListener('blur', this.cancel, false);
+            if (_this.mouseHandlersAttached) {
+                _this.mouseHandlersAttached = false;
+                document.documentElement.removeEventListener('mouseleave', _this.onMouseLeave, false);
+                window.removeEventListener('mousemove', _this.onMouseMove, true);
+                window.removeEventListener('mouseup', _this.onMouseUp, true);
+                window.removeEventListener('blur', _this.cancel, false);
             }
         },
         onMouseLeave: function (e) {
@@ -734,22 +732,22 @@ exports.Slip = function () {
         onTouchEnd: function (e) {
             e.stopPropagation();
             if (e.touches.length > 1) {
-                this.cancel();
+                _this.cancel();
             }
-            else if (this.state.onEnd && false === this.state.onEnd.call(this)) {
+            else if (_this.state.onEnd && false === _this.state.onEnd.call(_this)) {
                 e.preventDefault();
             }
         },
         getTotalMovement: function () {
-            var scrollOffset = this.target.scrollContainer.scrollTop - this.target.origScrollTop;
+            var scrollOffset = _this.target.scrollContainer.scrollTop - _this.target.origScrollTop;
             return {
-                x: this.latestPosition.x - this.startPosition.x,
-                y: this.latestPosition.y - this.startPosition.y + scrollOffset,
-                time: this.latestPosition.time - this.startPosition.time,
+                x: _this.latestPosition.x - _this.startPosition.x,
+                y: _this.latestPosition.y - _this.startPosition.y + scrollOffset,
+                time: _this.latestPosition.time - _this.startPosition.time,
             };
         },
         getAbsoluteMovement: function () {
-            var move = this.getTotalMovement();
+            var move = _this.getTotalMovement();
             return {
                 x: Math.abs(move.x),
                 y: Math.abs(move.y),
@@ -761,7 +759,7 @@ exports.Slip = function () {
         updateScrolling: function () {
             var triggerOffset = 40;
             var offset = 0;
-            var scrollable = this.target.scrollContainer, containerRect = scrollable.getBoundingClientRect(), targetRect = this.target.node.getBoundingClientRect(), bottomOffset = Math.min(containerRect.bottom, window.innerHeight) - targetRect.bottom, topOffset = targetRect.top - Math.max(containerRect.top, 0), maxScrollTop = this.target.origScrollHeight - Math.min(scrollable.clientHeight, window.innerHeight);
+            var scrollable = _this.target.scrollContainer, containerRect = scrollable.getBoundingClientRect(), targetRect = _this.target.node.getBoundingClientRect(), bottomOffset = Math.min(containerRect.bottom, window.innerHeight) - targetRect.bottom, topOffset = targetRect.top - Math.max(containerRect.top, 0), maxScrollTop = _this.target.origScrollHeight - Math.min(scrollable.clientHeight, window.innerHeight);
             if (bottomOffset < triggerOffset) {
                 offset = Math.min(triggerOffset, triggerOffset - bottomOffset);
             }
@@ -797,17 +795,18 @@ exports.Slip = function () {
         },
         animateToZero: function (callback, target) {
             // save, because this.target/container could change during animation
-            target = target || this.target;
+            target = target || _this.target;
             target.node.style[transitionJSPropertyName] = transformCSSPropertyName + ' 0.1s ease-out';
             target.node.style[transformJSPropertyName] = 'translate(0,0) ' + hwLayerMagicStyle + target.baseTransform.value;
             setTimeout(function () {
                 target.node.style[transitionJSPropertyName] = '';
                 target.node.style[transformJSPropertyName] = target.baseTransform.original;
                 if (callback)
-                    callback.call(this, target);
-            }.bind(this), 101);
+                    callback.call(_this, target);
+            }, 101);
         },
         animateSwipe: function (callback) {
+            var _this = this;
             var target = this.target;
             var siblings = this.getSiblings(target);
             var emptySpaceTransformStyle = 'translate(0,' + this.target.height + 'px) ' + hwLayerMagicStyle + ' ';
@@ -815,7 +814,7 @@ exports.Slip = function () {
             target.node.style[transitionJSPropertyName] = 'all 0.1s linear';
             target.node.style[transformJSPropertyName] = ' translate(' + (this.getTotalMovement().x > 0 ? '' : '-') + '100%,0) ' + hwLayerMagicStyle + target.baseTransform.value;
             setTimeout(function () {
-                if (callback.call(this, target)) {
+                if (callback.call(_this, target)) {
                     siblings.forEach(function (o) {
                         o.node.style[transitionJSPropertyName] = '';
                         o.node.style[transformJSPropertyName] = emptySpaceTransformStyle + o.baseTransform.value;
@@ -833,7 +832,7 @@ exports.Slip = function () {
                         }, 101);
                     }, 1);
                 }
-            }.bind(this), 101);
+            }, 101);
         },
     };
     return Slip;

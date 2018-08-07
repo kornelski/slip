@@ -1,6 +1,6 @@
 /// <reference path="./slip.d.ts" />
 
-import { IOptions, ISlip, IStateIdle, ITarget, IStateUndecided } from './slip.d';
+import { IOptions, ISibling, ISlip, IStateIdle, IStateUndecided, ITarget, ITransform } from './slip.d';
 
 /*
     Slip - swiping and reordering in lists of elements on touch screens, no fuss.
@@ -113,7 +113,7 @@ import { IOptions, ISlip, IStateIdle, ITarget, IStateUndecided } from './slip.d'
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-export const Slip = (): ISlip => {
+export const Slip = function(this: ISlip): ISlip {
     const accessibility = {
         // Set values to false if you don't want Slip to manage them
         container: {
@@ -148,7 +148,7 @@ export const Slip = (): ISlip => {
     const hwTopLayerMagicStyle = testElementStyle[transformJSPropertyName] ? 'translateZ(1px) ' : '';
     testElementStyle = null;
 
-    const globalInstances = 0;
+    let globalInstances = 0;
     const attachedBodyHandlerHack = false;
     const nullHandler = function() {};
 
@@ -183,9 +183,9 @@ export const Slip = (): ISlip => {
         this.attach(container);
 
         return this;
-    } as any as { new(container: HTMLElement|null, options: IOptions): ISlip; };
+    } as any as {new(container: HTMLElement | null, options: IOptions): ISlip;};
 
-    const getTransform = (node: ITarget['node']): {value: string, original: string} => {
+    const getTransform = (node: HTMLElement): ITransform => {
         const transform = node.style[transformJSPropertyName];
         if (transform) {
             return {
@@ -201,7 +201,7 @@ export const Slip = (): ISlip => {
         return { value: '', original: '' };
     };
 
-    const findIndex = (target: {node: HTMLElement}, nodes: HTMLElement[]): number => {
+    const findIndex = (target: {node: HTMLElement}, nodes: NodeListOf<Node & ChildNode>): number => {
         let originalIndex = 0;
         let listCount = 0;
 
@@ -302,8 +302,8 @@ export const Slip = (): ISlip => {
                 };
             },
 
-            swipe: function(this: IStateUndecided) {
-                const swipeSuccess = false;
+            swipe: () => {
+                let swipeSuccess = false;
                 const container = this.container;
 
                 const originalIndex = findIndex(this.target, this.container.childNodes);
@@ -315,9 +315,9 @@ export const Slip = (): ISlip => {
                 this.target.height = this.target.node.offsetHeight;
 
                 return {
-                    leaveState: function() {
+                    leaveState: () => {
                         if (swipeSuccess) {
-                            this.animateSwipe(function(target) {
+                            this.animateSwipe((target: ITarget): void | boolean => {
                                 target.node.style[transformJSPropertyName] = target.baseTransform.original;
                                 target.node.style[transitionJSPropertyName] = '';
                                 if (this.dispatch(target.node, 'afterswipe')) {
@@ -326,13 +326,13 @@ export const Slip = (): ISlip => {
                                 } else {
                                     this.animateToZero(undefined, target);
                                 }
-                            }.bind(this));
+                            });
                         } else {
                             this.animateToZero(removeClass);
                         }
                     },
 
-                    onMove: function() {
+                    onMove: () => {
                         const move = this.getTotalMovement();
 
                         if (Math.abs(move.y) < this.target.height + 20) {
@@ -349,11 +349,9 @@ export const Slip = (): ISlip => {
                         }
                     },
 
-                    onLeave: function() {
-                        this.state.onEnd.call(this);
-                    },
+                    onLeave: this.state.onEnd,
 
-                    onEnd: function() {
+                    onEnd: () => {
                         const move = this.getAbsoluteMovement();
                         const velocity = move.x / move.time;
 
@@ -378,28 +376,29 @@ export const Slip = (): ISlip => {
                 };
             },
 
-            reorder: function reorderStateInit() {
+            reorder: () => {
                 if (this.target.node.focus && accessibility.items.focus) {
                     this.target.node.focus();
                 }
 
                 this.target.height = this.target.node.offsetHeight;
 
-                const nodes;
+                let nodes: NodeListOf<Node & ChildNode>;
                 if (this.options.ignoredElements.length) {
                     const container = this.container;
-                    const query = container.tagName.toLowerCase();
+                    let query = container.tagName.toLowerCase();
                     if (container.getAttribute('id')) {
                         query = '#' + container.getAttribute('id');
                     } else if (container.classList.length) {
-                        query += '.' + container.getAttribute('class').replace(' ', '.');
+                        query += '.' + (container.getAttribute('class') as string)
+                            .replace(' ', '.');
                     }
                     query += ' > ';
-                    this.options.ignoredElements.forEach(function(selector) {
+                    this.options.ignoredElements.forEach((selector) => {
                         query += ':not(' + selector + ')';
                     });
                     try {
-                        nodes = container.parentNode.querySelectorAll(query);
+                        nodes = (container.parentNode as Element).querySelectorAll(query);
                     } catch (err) {
                         if (err instanceof DOMException && err.name === 'SyntaxError')
                             throw new Error('ignoredElements you specified contain invalid query');
@@ -407,20 +406,20 @@ export const Slip = (): ISlip => {
                             throw err;
                     }
                 } else {
-                    nodes = this.container.childNodes;
+                    nodes = this.container.childNodes as NodeListOf<Node & ChildNode>;
                 }
                 const originalIndex = findIndex(this.target, nodes);
-                let mouseOutsideTimer;
+                let mouseOutsideTimer: number | null;
                 const zero = this.target.node.offsetTop + this.target.height / 2;
-                const otherNodes = [];
-                for (const i = 0; i < nodes.length; i++) {
+                const otherNodes: {node: Node & ChildNode, baseTransform: ITransform, pos: number}[] = [];
+                for (let i = 0; i < nodes.length; i++) {
                     if (nodes[i].nodeType != 1 || nodes[i] === this.target.node) continue;
-                    const t = nodes[i].offsetTop;
-                    nodes[i].style[transitionJSPropertyName] = transformCSSPropertyName + ' 0.2s ease-in-out';
+                    const t = (nodes[i] as HTMLElement).offsetTop;
+                    (nodes[i] as HTMLElement).style[transitionJSPropertyName] = transformCSSPropertyName + ' 0.2s ease-in-out';
                     otherNodes.push({
                         node: nodes[i],
-                        baseTransform: getTransform(nodes[i]),
-                        pos: t + (t < zero ? nodes[i].offsetHeight : 0) - zero,
+                        baseTransform: getTransform(nodes[i] as HTMLElement),
+                        pos: t + (t < zero ? (nodes[i] as HTMLElement).offsetHeight : 0) - zero,
                     });
                 }
 
@@ -432,7 +431,7 @@ export const Slip = (): ISlip => {
                     this.container.style.webkitTransformStyle = 'preserve-3d';
                 }
 
-                function onMove() {
+                const onMove = () => {
                     /*jshint validthis:true */
 
                     this.updateScrolling();
@@ -456,15 +455,15 @@ export const Slip = (): ISlip => {
                             off = -height;
                         }
                         // FIXME: should change accelerated/non-accelerated state lazily
-                        o.node.style[transformJSPropertyName] = off ? 'translate(0,' + off + 'px) ' + hwLayerMagicStyle + o.baseTransform.value : o.baseTransform.original;
+                        (o.node as HTMLElement).style[transformJSPropertyName] = off ? 'translate(0,' + off + 'px) ' + hwLayerMagicStyle + o.baseTransform.value : o.baseTransform.original;
                     });
                     return false;
-                }
+                };
 
-                onMove.call(this);
+                onMove();
 
                 return {
-                    leaveState: function() {
+                    leaveState: () => {
                         if (mouseOutsideTimer) clearTimeout(mouseOutsideTimer);
 
                         if (compositorDoesNotOrderLayers) {
@@ -478,28 +477,28 @@ export const Slip = (): ISlip => {
                         this.target.node.classList.remove('slip-reordering');
                         this.target.node.style[userSelectJSPropertyName] = '';
 
-                        this.animateToZero(function(target) {
-                            target.node.style.zIndex = '';
-                        });
-                        otherNodes.forEach(function(o) {
-                            o.node.style[transformJSPropertyName] = o.baseTransform.original;
-                            o.node.style[transitionJSPropertyName] = ''; // FIXME: animate to new position
+                        this.animateToZero((target: ITarget) => target.node.style.zIndex = '');
+                        otherNodes.forEach(o => {
+                            (o.node as HTMLElement).style[transformJSPropertyName] = o.baseTransform.original;
+                            (o.node as HTMLElement).style[transitionJSPropertyName] = ''; // FIXME: animate to new position
                         });
                     },
 
                     onMove: onMove,
 
-                    onLeave: function() {
+                    onLeave: () => {
                         // don't let element get stuck if mouse left the window
                         // but don't cancel immediately as it'd be annoying near window edges
                         if (mouseOutsideTimer) clearTimeout(mouseOutsideTimer);
-                        mouseOutsideTimer = setTimeout(function() {
-                            mouseOutsideTimer = null;
-                            this.cancel();
-                        }.bind(this), 700);
+                        mouseOutsideTimer = setTimeout(() => {
+                                mouseOutsideTimer = null;
+                                this.cancel();
+                            }, 700
+                        )
+                        ;
                     },
 
-                    onEnd: function() {
+                    onEnd: () => {
                         const move = this.getTotalMovement();
                         let i, spliceIndex;
                         if (move.y < 0) {
@@ -531,7 +530,7 @@ export const Slip = (): ISlip => {
             },
         },
 
-        attach: function(container) {
+        attach: (container: HTMLElement) => {
             globalInstances++;
             if (this.container) this.detach();
 
@@ -568,7 +567,7 @@ export const Slip = (): ISlip => {
             // mousemove and mouseup are attached dynamically
         },
 
-        detach: function() {
+        detach: () => {
             this.cancel();
 
             this.container.removeEventListener('mousedown', this.onMouseDown, false);
@@ -621,7 +620,7 @@ export const Slip = (): ISlip => {
             this.setChildNodesAriaRoles();
         },
 
-        setChildNodesAriaRoles: function() {
+        setChildNodesAriaRoles: () => {
             const nodes = this.container.childNodes;
             for (const i = 0; i < nodes.length; i++) {
                 if (nodes[i].nodeType != 1) continue;
@@ -634,7 +633,7 @@ export const Slip = (): ISlip => {
             }
         },
 
-        unSetChildNodesAriaRoles: function() {
+        unSetChildNodesAriaRoles: () => {
             const nodes = this.container.childNodes;
             for (const i = 0; i < nodes.length; i++) {
                 if (nodes[i].nodeType != 1) continue;
@@ -662,7 +661,7 @@ export const Slip = (): ISlip => {
             }
         },
 
-        addMouseHandlers: function() {
+        addMouseHandlers: () => {
             // unlike touch events, mousemove/up is not conveniently fired on the same element,
             // but I don't need to listen to unrelated events all the time
             if (!this.mouseHandlersAttached) {
@@ -674,7 +673,7 @@ export const Slip = (): ISlip => {
             }
         },
 
-        removeMouseHandlers: function() {
+        removeMouseHandlers: () => {
             if (this.mouseHandlersAttached) {
                 this.mouseHandlersAttached = false;
                 document.documentElement.removeEventListener('mouseleave', this.onMouseLeave, false);
@@ -810,7 +809,7 @@ export const Slip = (): ISlip => {
             }
         },
 
-        onTouchEnd: function(e) {
+        onTouchEnd: (e: TouchEvent) => {
             e.stopPropagation();
             if (e.touches.length > 1) {
                 this.cancel();
@@ -819,7 +818,7 @@ export const Slip = (): ISlip => {
             }
         },
 
-        getTotalMovement: function() {
+        getTotalMovement: (): ISlip['latestPosition'] => {
             const scrollOffset = this.target.scrollContainer.scrollTop - this.target.origScrollTop;
             return {
                 x: this.latestPosition.x - this.startPosition.x,
@@ -828,7 +827,7 @@ export const Slip = (): ISlip => {
             };
         },
 
-        getAbsoluteMovement: function() {
+        getAbsoluteMovement: () => {
             const move = this.getTotalMovement();
             return {
                 x: Math.abs(move.x),
@@ -839,7 +838,7 @@ export const Slip = (): ISlip => {
             };
         },
 
-        updateScrolling: function() {
+        updateScrolling: () => {
             const triggerOffset = 40;
             let offset = 0;
 
@@ -860,45 +859,46 @@ export const Slip = (): ISlip => {
             scrollable.scrollTop = Math.max(0, Math.min(maxScrollTop, scrollable.scrollTop + offset));
         },
 
-        dispatch: function(targetNode, eventName, detail) {
+        dispatch: (targetNode: EventTarget, eventName: string, detail: any) => {
             let event = document.createEvent('CustomEvent');
             if (event && event.initCustomEvent) {
                 event.initCustomEvent('slip:' + eventName, true, true, detail);
             } else {
-                event = document.createEvent('Event');
+                event = document.createEvent('Event') as CustomEvent<any>;
                 event.initEvent('slip:' + eventName, true, true);
                 event.detail = detail;
             }
             return targetNode.dispatchEvent(event);
         },
 
-        getSiblings: function(target) {
+        getSiblings: (target: ITarget): ISibling[] => {
             const siblings = [];
-            const tmp = target.node.nextSibling;
+            let tmp = target.node.nextSibling;
             while (tmp) {
                 if (tmp.nodeType == 1) siblings.push({
-                    node: tmp,
-                    baseTransform: getTransform(tmp),
+                    node: tmp as HTMLElement,
+                    baseTransform: getTransform(tmp as HTMLElement),
                 });
                 tmp = tmp.nextSibling;
             }
             return siblings;
         },
 
-        animateToZero: function(callback, target) {
+        animateToZero: (callback: (target: ITarget) => void, target: ITarget) => {
             // save, because this.target/container could change during animation
             target = target || this.target;
 
             target.node.style[transitionJSPropertyName] = transformCSSPropertyName + ' 0.1s ease-out';
             target.node.style[transformJSPropertyName] = 'translate(0,0) ' + hwLayerMagicStyle + target.baseTransform.value;
-            setTimeout(function() {
-                target.node.style[transitionJSPropertyName] = '';
-                target.node.style[transformJSPropertyName] = target.baseTransform.original;
-                if (callback) callback.call(this, target);
-            }.bind(this), 101);
+            setTimeout(() => {
+                    target.node.style[transitionJSPropertyName] = '';
+                    target.node.style[transformJSPropertyName] = target.baseTransform.original;
+                    if (callback) callback.call(this, target);
+                }, 101
+            );
         },
 
-        animateSwipe: function(callback) {
+        animateSwipe: function(callback: (that: any) => void) {
             const target = this.target;
             const siblings = this.getSiblings(target);
             const emptySpaceTransformStyle = 'translate(0,' + this.target.height + 'px) ' + hwLayerMagicStyle + ' ';
@@ -907,26 +907,27 @@ export const Slip = (): ISlip => {
             target.node.style[transitionJSPropertyName] = 'all 0.1s linear';
             target.node.style[transformJSPropertyName] = ' translate(' + (this.getTotalMovement().x > 0 ? '' : '-') + '100%,0) ' + hwLayerMagicStyle + target.baseTransform.value;
 
-            setTimeout(function() {
-                if (callback.call(this, target)) {
-                    siblings.forEach(function(o) {
-                        o.node.style[transitionJSPropertyName] = '';
-                        o.node.style[transformJSPropertyName] = emptySpaceTransformStyle + o.baseTransform.value;
-                    });
-                    setTimeout(function() {
-                        siblings.forEach(function(o) {
-                            o.node.style[transitionJSPropertyName] = transformCSSPropertyName + ' 0.1s ease-in-out';
-                            o.node.style[transformJSPropertyName] = 'translate(0,0) ' + hwLayerMagicStyle + o.baseTransform.value;
+            setTimeout(() => {
+                    if (callback.call(this, target)) {
+                        siblings.forEach((o: ISibling) => {
+                            o.node.style[transitionJSPropertyName] = '';
+                            o.node.style[transformJSPropertyName] = emptySpaceTransformStyle + o.baseTransform.value;
                         });
-                        setTimeout(function() {
-                            siblings.forEach(function(o) {
-                                o.node.style[transitionJSPropertyName] = '';
-                                o.node.style[transformJSPropertyName] = o.baseTransform.original;
+                        setTimeout(() => {
+                            siblings.forEach((o: ISibling) => {
+                                o.node.style[transitionJSPropertyName] = transformCSSPropertyName + ' 0.1s ease-in-out';
+                                o.node.style[transformJSPropertyName] = 'translate(0,0) ' + hwLayerMagicStyle + o.baseTransform.value;
                             });
-                        }, 101);
-                    }, 1);
-                }
-            }.bind(this), 101);
+                            setTimeout(() => {
+                                siblings.forEach((o: ISibling) => {
+                                    o.node.style[transitionJSPropertyName] = '';
+                                    o.node.style[transformJSPropertyName] = o.baseTransform.original;
+                                });
+                            }, 101);
+                        }, 1);
+                    }
+                }, 101
+            );
         },
     };
     return Slip;
