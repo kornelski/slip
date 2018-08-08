@@ -1,6 +1,6 @@
 /// <reference path="./slip.d.ts" />
 
-import { IOptions, IPosition, ISibling, ISlip, ITarget, ITransform } from './slip.d';
+import { IMove, IOptions, IPosition, ISibling, ISlip, IState, ITarget, ITransform, TEvent } from './slip.d';
 
 /*
     Slip - swiping and reordering in lists of elements on touch screens, no fuss.
@@ -116,45 +116,13 @@ import { IOptions, IPosition, ISibling, ISlip, ITarget, ITransform } from './sli
 
 export class Slip implements ISlip {
     private static nullHandler = function() {};
-    getTransform = (node: HTMLElement): ITransform => {
-        const transform = node.style[transformJSPropertyName];
-        if (transform) {
-            return {
-                value: transform,
-                original: transform,
-            };
-        }
-
-        if (window.getComputedStyle) {
-            const style = window.getComputedStyle(node).getPropertyValue(transformCSSPropertyName);
-            if (style && style !== 'none') return { value: style, original: '' };
-        }
-        return { value: '', original: '' };
-    };
-    findIndex = (target: {node: HTMLElement}, nodes: NodeListOf<Node & ChildNode>): number => {
-        let originalIndex = 0;
-        let listCount = 0;
-
-        for (let i = 0; i < nodes.length; i++) {
-            if (nodes[i].nodeType === 1) {
-                listCount++;
-                if (nodes[i] === target.node) {
-                    originalIndex = listCount - 1;
-                }
-            }
-        }
-
-        return originalIndex;
-    };
-    container!: HTMLElement;
-    state: null;
-    target!: ITarget; // the tapped/swiped/reordered node with height and backed up styles
-    usingTouch: false; // there's no good way to detect touchscreen preference other than receiving a touch event (really, trust me).
-    mouseHandlersAttached: false;
-    startPosition: null; // x,y,time where first touch began
-    latestPosition: null; // x,y,time where the finger is currently
-    previousPosition: null; // x,y,time where the finger was ~100ms ago (for velocity calculation)
-    canPreventScrolling: false;
+    private state?: IState = undefined;
+    private target?: ITarget = undefined; // the tapped/swiped/reordered node with height and backed up styles
+    private usingTouch: boolean = false; // there's no good way to detect touchscreen preference other than receiving a touch event (really, trust me).
+    private mouseHandlersAttached: boolean = false;
+    private startPosition?: IPosition = undefined; // x,y,time where first touch began
+    private latestPosition?: IPosition = undefined; // x,y,time where the finger is currently
+    private previousPosition?: IPosition = undefined; // x,y,time where the finger was ~100ms ago (for velocity calculation)
     private accessibility = {
         // Set values to false if you don't want Slip to manage them
         container: {
@@ -173,10 +141,9 @@ export class Slip implements ISlip {
     /* When dragging elements down in Chrome (tested 34-37) dragged element may appear below stationary elements.
        Looks like WebKit bug #61824, but iOS Safari doesn't have that problem. */
     private compositorDoesNotOrderLayers = this.damnYouChrome;
+    private canPreventScrolling: boolean = false;
     // -webkit-mess
-    private testElementStyle: CSSStyleDeclaration = document.createElement('div').style;
-    private transformCSSPropertyName = this.transformJSPropertyName === 'webkitTransform' ? '-webkit-transform' : 'transform';
-    private testElementStyle = null;
+    private testElementStyle = document.createElement('div').style;
     private transitionJSPropertyName = 'transition'.indexOf(this.testElementStyle.toString()) > -1 ? 'transition' : 'webkitTransition';
     private transformJSPropertyName: string = 'transform'.indexOf(this.testElementStyle.toString()) > -1 ? 'transform' : 'webkitTransform';
     private userSelectJSPropertyName = 'userSelect'.indexOf(this.testElementStyle.toString()) > -1 ? 'userSelect' : 'webkitUserSelect';
@@ -184,11 +151,13 @@ export class Slip implements ISlip {
     private hwTopLayerMagicStyle = this.testElementStyle[this.transformJSPropertyName] ? 'translateZ(1px) ' : '';
     private globalInstances = 0;
     private attachedBodyHandlerHack = false;
+    private transformCSSPropertyName!: string;
 
     constructor(private container: HTMLElement | null, private options: IOptions) {
+        this.transformCSSPropertyName = this.transformJSPropertyName === 'webkitTransform' ? '-webkit-transform' : 'transform';
         this.testElementStyle[this.transformJSPropertyName as string] = 'translateZ(0)';
         if ('string' === typeof (container as any as string))
-            container = document.querySelector<HTMLElement>(container as any as string);
+            this.container = document.querySelector<HTMLElement>(container as any as string);
         if (!container || !container.addEventListener) throw new Error('Please specify DOM node to attach to');
 
         if (!this || (this as any as Window) === window) return new Slip(container, options);
@@ -247,8 +216,8 @@ export class Slip implements ISlip {
 
             undecided() {
                 outer.target.height = outer.target.node.offsetHeight;
-                outer.target.node.style.willChange = transformCSSPropertyName;
-                outer.target.node.style[transitionJSPropertyName] = '';
+                outer.target.node.style.willChange = outer.transformCSSPropertyName;
+                outer.target.node.style[outer.this.transitionJSPropertyName] = '';
 
                 let holdTimer = 0;
 
@@ -318,7 +287,7 @@ export class Slip implements ISlip {
                         if (swipeSuccess) {
                             outer.animateSwipe(target => {
                                 target.node.style[transformJSPropertyName] = target.baseTransform.original;
-                                target.node.style[transitionJSPropertyName] = '';
+                                target.node.style[this.transitionJSPropertyName] = '';
                                 if (outer.dispatch(target.node, 'afterswipe')) {
                                     removeClass();
                                     return true;
@@ -376,7 +345,7 @@ export class Slip implements ISlip {
             }
 
             reorder() {
-                if (outer.target.node.focus && accessibility.items.focus) {
+                if (outer.target.node.focus && outer.accessibility.items.focus) {
                     outer.target.node.focus();
                 }
 
@@ -414,7 +383,7 @@ export class Slip implements ISlip {
                 for (let i = 0; i < nodes.length; i++) {
                     if (nodes[i].nodeType != 1 || nodes[i] === outer.target.node) continue;
                     const t = (nodes[i] as HTMLElement).offsetTop;
-                    (nodes[i] as HTMLElement).style[transitionJSPropertyName] = transformCSSPropertyName + ' 0.2s ease-in-out';
+                    (nodes[i] as HTMLElement).style[this.transitionJSPropertyName] = transformCSSPropertyName + ' 0.2s ease-in-out';
                     otherNodes.push({
                         node: nodes[i],
                         baseTransform: getTransform(nodes[i] as HTMLElement),
@@ -424,8 +393,8 @@ export class Slip implements ISlip {
 
                 outer.target.node.classList.add('slip-reordering');
                 outer.target.node.style.zIndex = '99999';
-                outer.target.node.style[userSelectJSPropertyName] = 'none';
-                if (compositorDoesNotOrderLayers) {
+                outer.target.node.style[outer.userSelectJSPropertyName] = 'none';
+                if (outer.compositorDoesNotOrderLayers) {
                     // Chrome's compositor doesn't sort 2D layers
                     outer.container.style.webkitTransformStyle = 'preserve-3d';
                 }
@@ -442,7 +411,7 @@ export class Slip implements ISlip {
                     }
 
                     const move = outer.getTotalMovement();
-                    outer.target.node.style[transformJSPropertyName] = 'translate(0,' + move.y + 'px) ' + hwTopLayerMagicStyle + outer.target.baseTransform.value;
+                    outer.target.node.style[outer.transformJSPropertyName] = 'translate(0,' + move.y + 'px) ' + hwTopLayerMagicStyle + outer.target.baseTransform.value;
 
                     const height = outer.target.height || 0;
                     otherNodes.forEach(function(o) {
@@ -454,7 +423,7 @@ export class Slip implements ISlip {
                             off = -height;
                         }
                         // FIXME: should change accelerated/non-accelerated state lazily
-                        (o.node as HTMLElement).style[transformJSPropertyName] = off ? 'translate(0,' + off + 'px) ' + hwLayerMagicStyle + o.baseTransform.value : o.baseTransform.original;
+                        (o.node as HTMLElement).style[outer.transformJSPropertyName] = off ? 'translate(0,' + off + 'px) ' + hwLayerMagicStyle + o.baseTransform.value : o.baseTransform.original;
                     });
                     return false;
                 };
@@ -465,21 +434,21 @@ export class Slip implements ISlip {
                     leaveState: () => {
                         if (mouseOutsideTimer) clearTimeout(mouseOutsideTimer);
 
-                        if (compositorDoesNotOrderLayers) {
+                        if (outer.compositorDoesNotOrderLayers) {
                             outer.container.style.webkitTransformStyle = '';
                         }
 
-                        if (outer.container.focus && accessibility.container.focus) {
+                        if (outer.container.focus && outer.accessibility.container.focus) {
                             outer.container.focus();
                         }
 
                         outer.target.node.classList.remove('slip-reordering');
-                        outer.target.node.style[userSelectJSPropertyName] = '';
+                        outer.target.node.style[outer.userSelectJSPropertyName] = '';
 
                         outer.animateToZero((target: ITarget) => target.node.style.zIndex = '');
                         otherNodes.forEach(o => {
-                            (o.node as HTMLElement).style[transformJSPropertyName] = o.baseTransform.original;
-                            (o.node as HTMLElement).style[transitionJSPropertyName] = ''; // FIXME: animate to new position
+                            (o.node as HTMLElement).style[outer.transformJSPropertyName] = o.baseTransform.original;
+                            (o.node as HTMLElement).style[this.transitionJSPropertyName] = ''; // FIXME: animate to new position
                         });
                     },
 
@@ -531,24 +500,24 @@ export class Slip implements ISlip {
     }
 
     attach(container: HTMLElement) {
-        globalInstances++;
+        this.globalInstances++;
         if (this.container) this.detach();
 
         // In some cases taps on list elements send *only* click events and no touch events. Spotted only in Chrome 32+
         // Having event listener on body seems to solve the issue (although AFAIK may disable smooth scrolling as a side-effect)
-        if (!attachedBodyHandlerHack && needsBodyHandlerHack) {
-            attachedBodyHandlerHack = true;
-            document.body.addEventListener('touchstart', nullHandler, false);
+        if (!this.attachedBodyHandlerHack && this.needsBodyHandlerHack) {
+            this.attachedBodyHandlerHack = true;
+            document.body.addEventListener('touchstart', Slip.nullHandler, false);
         }
 
         this.container = container;
 
         // Accessibility
-        if (false !== accessibility.container.tabIndex as any as boolean) {
-            this.container.tabIndex = accessibility.container.tabIndex;
+        if (false !== this.accessibility.container.tabIndex as any as boolean) {
+            this.container.tabIndex = this.accessibility.container.tabIndex;
         }
-        if (accessibility.container.ariaRole) {
-            this.container.setAttribute('aria-role', accessibility.container.ariaRole);
+        if (this.accessibility.container.ariaRole) {
+            this.container.setAttribute('aria-role', this.accessibility.container.ariaRole);
         }
         this.setChildNodesAriaRoles();
         this.container.addEventListener('focus', this.onContainerFocus, false);
@@ -586,10 +555,36 @@ export class Slip implements ISlip {
         }
         this.unSetChildNodesAriaRoles();
 
-        globalInstances--;
-        if (!globalInstances && attachedBodyHandlerHack) {
-            attachedBodyHandlerHack = false;
-            document.body.removeEventListener('touchstart', nullHandler, false);
+        this.globalInstances--;
+        if (!this.globalInstances && this.attachedBodyHandlerHack) {
+            this.attachedBodyHandlerHack = false;
+            document.body.removeEventListener('touchstart', Slip.nullHandler, false);
+        }
+    }
+
+    setChildNodesAriaRoles() {
+        const nodes = this.container.childNodes as NodeListOf<HTMLElement>;
+        for (let i = 0; i < nodes.length; i++) {
+            if (nodes[i].nodeType != 1) continue;
+            if (this.accessibility.items.ariaRole) {
+                nodes[i].setAttribute('aria-role', this.accessibility.items.ariaRole);
+            }
+            if (false !== this.accessibility.items.tabIndex as any as boolean) {
+                nodes[i].tabIndex = this.accessibility.items.tabIndex;
+            }
+        }
+    }
+
+    unSetChildNodesAriaRoles() {
+        const nodes = this.container.childNodes as NodeListOf<HTMLElement>;
+        for (let i = 0; i < nodes.length; i++) {
+            if (nodes[i].nodeType != 1) continue;
+            if (this.accessibility.items.ariaRole) {
+                nodes[i].removeAttribute('aria-role');
+            }
+            if (false !== this.accessibility.items.tabIndex as any as boolean) {
+                nodes[i].removeAttribute('tabIndex');
+            }
         }
     }
 
@@ -621,30 +616,42 @@ export class Slip implements ISlip {
         this.setChildNodesAriaRoles();
     }
 
-    setChildNodesAriaRoles() {
-        const nodes = this.container.childNodes as NodeListOf<HTMLElement>;
-        for (let i = 0; i < nodes.length; i++) {
-            if (nodes[i].nodeType != 1) continue;
-            if (accessibility.items.ariaRole) {
-                nodes[i].setAttribute('aria-role', accessibility.items.ariaRole);
-            }
-            if (false !== accessibility.items.tabIndex as any as boolean) {
-                nodes[i].tabIndex = accessibility.items.tabIndex;
-            }
+    setTarget(e: MSInputMethodContext): boolean {
+        const targetNode = this.findTargetNode(e.target);
+        if (!targetNode) {
+            this.setState(this.states.idle);
+            return false;
         }
+
+        //check for a scrollable parent
+        let scrollContainer = targetNode.parentNode as HTMLElement;
+        while (scrollContainer) {
+            if (scrollContainer == document.body) break;
+            if (scrollContainer.scrollHeight > scrollContainer.clientHeight && window.getComputedStyle(scrollContainer).overflowY !== 'visible') break;
+            scrollContainer = scrollContainer.parentNode as HTMLElement;
+        }
+        scrollContainer = scrollContainer || document.body;
+
+        this.target = {
+            originalTarget: e.target as any as ITarget,
+            node: targetNode as ITarget['node'],
+            scrollContainer: scrollContainer,
+            origScrollTop: scrollContainer.scrollTop,
+            origScrollHeight: scrollContainer.scrollHeight,
+            baseTransform: this.getTransform(targetNode as HTMLElement),
+        };
+        return true;
     }
 
-    unSetChildNodesAriaRoles() {
-        const nodes = this.container.childNodes as NodeListOf<HTMLElement>;
-        for (let i = 0; i < nodes.length; i++) {
-            if (nodes[i].nodeType != 1) continue;
-            if (accessibility.items.ariaRole) {
-                nodes[i].removeAttribute('aria-role');
-            }
-            if (false !== accessibility.items.tabIndex as any as boolean) {
-                nodes[i].removeAttribute('tabIndex');
-            }
-        }
+    getAbsoluteMovement(): IMove {
+        const move = this.getTotalMovement();
+        return {
+            x: Math.abs(move.x),
+            y: Math.abs(move.y),
+            time: move.time,
+            directionX: move.x < 0 ? 'left' : 'right',
+            directionY: move.y < 0 ? 'up' : 'down',
+        };
     }
 
     onSelection(e: Event & Node) {
@@ -731,31 +738,16 @@ export class Slip implements ISlip {
         });
     }
 
-    setTarget(e: Event & {target?: Node | null}): boolean {
-        const targetNode = this.findTargetNode(e.target);
-        if (!targetNode) {
-            this.setState(this.states.idle);
-            return false;
+    dispatch(targetNode: EventTarget, eventName: TEvent, detail?: IMove) {
+        let event = document.createEvent('CustomEvent');
+        if (event && event.initCustomEvent) {
+            event.initCustomEvent('slip:' + eventName, true, true, detail);
+        } else {
+            event = document.createEvent('Event') as CustomEvent<any>;
+            event.initEvent('slip:' + eventName, true, true);
+            // event.detail = detail;
         }
-
-        //check for a scrollable parent
-        let scrollContainer = targetNode.parentNode as HTMLElement;
-        while (scrollContainer) {
-            if (scrollContainer == document.body) break;
-            if (scrollContainer.scrollHeight > scrollContainer.clientHeight && window.getComputedStyle(scrollContainer).overflowY !== 'visible') break;
-            scrollContainer = scrollContainer.parentNode as HTMLElement;
-        }
-        scrollContainer = scrollContainer || document.body;
-
-        this.target = {
-            originalTarget: e.target as any as ITarget,
-            node: targetNode as ITarget['node'],
-            scrollContainer: scrollContainer,
-            origScrollTop: scrollContainer.scrollTop,
-            origScrollHeight: scrollContainer.scrollHeight,
-            baseTransform: getTransform(targetNode as HTMLElement),
-        };
-        return true;
+        return targetNode.dispatchEvent(event);
     }
 
     startAtPosition(pos: IPosition) {
@@ -829,15 +821,17 @@ export class Slip implements ISlip {
         };
     }
 
-    getAbsoluteMovement() {
-        const move = this.getTotalMovement();
-        return {
-            x: Math.abs(move.x),
-            y: Math.abs(move.y),
-            time: move.time,
-            directionX: move.x < 0 ? 'left' : 'right',
-            directionY: move.y < 0 ? 'up' : 'down',
-        };
+    getSiblings(target: ITarget): ISibling[] {
+        const siblings = [];
+        let tmp = target.node.nextSibling;
+        while (tmp) {
+            if (tmp.nodeType == 1) siblings.push({
+                node: tmp as HTMLElement,
+                baseTransform: this.getTransform(tmp as HTMLElement),
+            });
+            tmp = tmp.nextSibling;
+        }
+        return siblings;
     }
 
     updateScrolling() {
@@ -861,46 +855,19 @@ export class Slip implements ISlip {
         scrollable.scrollTop = Math.max(0, Math.min(maxScrollTop, scrollable.scrollTop + offset));
     }
 
-    dispatch(targetNode: EventTarget, eventName: string, detail: any) {
-        let event = document.createEvent('CustomEvent');
-        if (event && event.initCustomEvent) {
-            event.initCustomEvent('slip:' + eventName, true, true, detail);
-        } else {
-            event = document.createEvent('Event') as CustomEvent<any>;
-            event.initEvent('slip:' + eventName, true, true);
-            // event.detail = detail;
-        }
-        return targetNode.dispatchEvent(event);
-    }
-
-    getSiblings(target: ITarget): ISibling[] {
-        const siblings = [];
-        let tmp = target.node.nextSibling;
-        while (tmp) {
-            if (tmp.nodeType == 1) siblings.push({
-                node: tmp as HTMLElement,
-                baseTransform: getTransform(tmp as HTMLElement),
-            });
-            tmp = tmp.nextSibling;
-        }
-        return siblings;
-    }
-
     animateToZero(callback: (target: ITarget) => void, target: ITarget) {
         // save, because this.target/container could change during animation
         target = target || this.target;
 
-        target.node.style[transitionJSPropertyName] = transformCSSPropertyName + ' 0.1s ease-out';
-        target.node.style[transformJSPropertyName] = 'translate(0,0) ' + hwLayerMagicStyle + target.baseTransform.value;
+        target.node.style[this.transitionJSPropertyName] = this.transformCSSPropertyName + ' 0.1s ease-out';
+        target.node.style[this.transformJSPropertyName] = 'translate(0,0) ' + this.hwLayerMagicStyle + target.baseTransform.value;
         setTimeout(() => {
-                target.node.style[transitionJSPropertyName] = '';
-                target.node.style[transformJSPropertyName] = target.baseTransform.original;
+            target.node.style[this.transitionJSPropertyName] = '';
+            target.node.style[this.transformJSPropertyName] = target.baseTransform.original;
                 if (callback) callback.call(this, target);
             }, 101
         );
     }
-
-    /// states
 
     animateSwipe(callback: (target: ITarget) => void): void | boolean {
         const target: ITarget = this.target;
@@ -908,29 +875,63 @@ export class Slip implements ISlip {
         const emptySpaceTransformStyle = 'translate(0,' + this.target.height + 'px) ' + hwLayerMagicStyle + ' ';
 
         // FIXME: animate with real velocity
-        target.node.style[transitionJSPropertyName] = 'all 0.1s linear';
-        target.node.style[transformJSPropertyName] = ' translate(' + (this.getTotalMovement().x > 0 ? '' : '-') + '100%,0) ' + hwLayerMagicStyle + target.baseTransform.value;
+        target.node.style[this.transitionJSPropertyName] = 'all 0.1s linear';
+        target.node.style[this.transformJSPropertyName] = ' translate(' + (this.getTotalMovement().x > 0 ? '' : '-') + '100%,0) ' + hwLayerMagicStyle + target.baseTransform.value;
 
         setTimeout(() => {
                 if (callback.call(this, target)) {
                     siblings.forEach((o: ISibling) => {
-                        o.node.style[transitionJSPropertyName] = '';
-                        o.node.style[transformJSPropertyName] = emptySpaceTransformStyle + o.baseTransform.value;
+                        o.node.style[this.transitionJSPropertyName] = '';
+                        o.node.style[this.transformJSPropertyName] = emptySpaceTransformStyle + o.baseTransform.value;
                     });
                     setTimeout(() => {
                         siblings.forEach((o: ISibling) => {
-                            o.node.style[transitionJSPropertyName] = transformCSSPropertyName + ' 0.1s ease-in-out';
-                            o.node.style[transformJSPropertyName] = 'translate(0,0) ' + hwLayerMagicStyle + o.baseTransform.value;
+                            o.node.style[this.transitionJSPropertyName] = transformCSSPropertyName + ' 0.1s ease-in-out';
+                            o.node.style[this.transformJSPropertyName] = 'translate(0,0) ' + hwLayerMagicStyle + o.baseTransform.value;
                         });
                         setTimeout(() => {
                             siblings.forEach((o: ISibling) => {
-                                o.node.style[transitionJSPropertyName] = '';
-                                o.node.style[transformJSPropertyName] = o.baseTransform.original;
+                                o.node.style[this.transitionJSPropertyName] = '';
+                                o.node.style[this.transformJSPropertyName] = o.baseTransform.original;
                             });
                         }, 101);
                     }, 1);
                 }
             }, 101
         );
+    }
+
+    private getTransform(node: HTMLElement): ITransform {
+        const transform = node.style[this.transformJSPropertyName];
+        if (transform) {
+            return {
+                value: transform,
+                original: transform,
+            };
+        }
+
+        if (window.getComputedStyle) {
+            const style = window.getComputedStyle(node).getPropertyValue(this.transformCSSPropertyName);
+            if (style && style !== 'none') return { value: style, original: '' };
+        }
+        return { value: '', original: '' };
+    }
+
+    /// states
+
+    private findIndex(target: {node: HTMLElement}, nodes: NodeListOf<Node & ChildNode>): number {
+        let originalIndex = 0;
+        let listCount = 0;
+
+        for (let i = 0; i < nodes.length; i++) {
+            if (nodes[i].nodeType === 1) {
+                listCount++;
+                if (nodes[i] === target.node) {
+                    originalIndex = listCount - 1;
+                }
+            }
+        }
+
+        return originalIndex;
     }
 }

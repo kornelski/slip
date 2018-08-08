@@ -5,15 +5,15 @@ export interface ISlip extends IState, IDispatch, IMovement {
     states: {reorder: string, swipe: string, idle: string, undecided: string};
     attach: (container: HTMLElement) => void;
     container: HTMLElement;
-    latestPosition: IPosition;
-    startPosition: IPosition;
-    previousPosition: IPosition;
+    latestPosition?: IPosition;
+    startPosition?: IPosition;
+    previousPosition?: IPosition;
     animateSwipe: (callback: (target: ITarget) => void) => void | boolean;
     animateToZero: (callback?: (target: ITarget) => void, target?: ITarget) => void | boolean;
     getTotalMovement: () => IPosition;
     updateScrolling: () => void;
-    target: ITarget;
-    state: IState;
+    target?: ITarget;
+    state?: IState;
     detach: () => void;
     setChildNodesAriaRoles: () => void;
     unSetChildNodesAriaRoles: () => void;
@@ -24,18 +24,18 @@ export interface ISlip extends IState, IDispatch, IMovement {
     addMouseHandlers: () => void;
     canPreventScrolling: boolean;
     startAtPosition: (position: IPosition) => void;
-    setTarget: (e: Event & {target: Node | EventTarget | null}) => boolean;
+    setTarget: (e: MSInputMethodContext) => boolean;
     getSiblings: (target: ITarget) => ISibling[];
     updatePosition: (e: MouseEvent | TouchEvent, position: IPosition) => void;
 }
 
 interface IDispatch {
-    dispatch: (target: ITarget['node'] | ITarget, event: TEvent,
+    dispatch: (targetNode: EventTarget, eventName: TEvent,
                move?: IMove) => void;
 }
 
 interface IMovement {
-    getAbsoluteMovement: () => Required<IMove>;
+    getAbsoluteMovement: () => IMove;
 }
 
 export interface IOptions {
@@ -54,15 +54,15 @@ export interface IPosition {
 
 export interface IState {
     cancel: () => void;
-    onTouchStart: () => void;
-    onTouchMove: () => void;
-    onTouchEnd: () => void;
-    onMouseDown: () => void;
-    onMouseMove: () => void;
-    onMouseUp: () => void;
-    onMouseLeave: () => void;
-    onSelection: () => void;
-    onContainerFocus: () => void;
+    onTouchStart: (e: TouchEvent) => void;
+    onTouchMove: (e: TouchEvent) => void;
+    onTouchEnd: (e: TouchEvent) => void;
+    onMouseDown: (e: MouseEvent & MSGesture) => void;
+    onMouseMove: (e: MouseEvent) => void;
+    onMouseUp: (e: MouseEvent) => void;
+    onMouseLeave: (e: MouseEvent) => void;
+    onSelection: (e: Event & Node) => void;
+    onContainerFocus: (e: TouchEvent) => void;
     onLeave: () => void;
     onEnd: () => void;
     onMove: () => void;
@@ -114,9 +114,9 @@ export interface ITransform {
     original: string;
 }
 
-interface IMove {
-    directionX?: number;
-    directionY?: number,
+export interface IMove {
+    directionX?: string;
+    directionY?: string,
     x?: number;
     y?: number;
     originalIndex?: number;
