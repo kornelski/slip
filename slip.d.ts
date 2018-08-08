@@ -2,7 +2,8 @@ export interface ISlip extends IState, IDispatch, IMovement {
     (container: HTMLElement | null, options: IOptions): ISlip;
 
     options: IOptions;
-    states: {reorder: string, swipe: string, idle: string, undecided: string};
+    states: IStates;
+    _states: () => IStates;
     attach: (container: HTMLElement) => void;
     container: HTMLElement;
     latestPosition?: IPosition;
@@ -24,9 +25,10 @@ export interface ISlip extends IState, IDispatch, IMovement {
     addMouseHandlers: () => void;
     canPreventScrolling: boolean;
     startAtPosition: (position: IPosition) => void;
-    setTarget: (e: MSInputMethodContext) => boolean;
+    setTarget: (e: MouseEvent & MSGesture) => boolean;
     getSiblings: (target: ITarget) => ISibling[];
     updatePosition: (e: MouseEvent | TouchEvent, position: IPosition) => void;
+    cancel: () => void;
 }
 
 interface IDispatch {
@@ -52,7 +54,7 @@ export interface IPosition {
     time: number;
 }
 
-export interface IState {
+export interface IState extends IStateImplement {
     cancel: () => void;
     onTouchStart: (e: TouchEvent) => void;
     onTouchMove: (e: TouchEvent) => void;
@@ -63,12 +65,10 @@ export interface IState {
     onMouseLeave: (e: MouseEvent) => void;
     onSelection: (e: Event & Node) => void;
     onContainerFocus: (e: TouchEvent) => void;
-    onLeave: () => void;
-    onEnd: () => void;
-    onMove: () => void;
+
     setState: (state: ISlip['states']['idle']) => void;
-    ctor: {new(): any};
-    leaveState: () => void;
+    ctor: () => void;
+
     allowTextSelection: boolean;
 }
 
@@ -97,7 +97,7 @@ export interface IStateReorder extends IStateUndecided, ISlip {
 export interface ITarget {
     node: HTMLElement & {style: {willChange?: string;}};
     height?: number;
-    originalTarget: ITarget;
+    originalTarget: EventTarget;
     baseTransform: ITransform;
     scrollContainer: HTMLElement;
     origScrollTop: number;
@@ -116,14 +116,28 @@ export interface ITransform {
 
 export interface IMove {
     directionX?: string;
-    directionY?: string,
+    directionY?: string;
     x?: number;
     y?: number;
     originalIndex?: number;
-    direction?: number;
+    direction?: string;
     time?: number;
     spliceIndex?: number;
     insertBefore?: {node: Node & ChildNode, baseTransform: ITransform, pos: number};
+}
+
+export interface IStates {
+    idle: () => void;
+    undecided: () => void;
+    swipe: () => void;
+    reorder: () => void;
+}
+
+export interface IStateImplement {
+    leaveState: () => void;
+    onLeave: () => void;
+    onEnd: () => void;
+    onMove: () => void;
 }
 
 type TEvent = 'beforewait' | 'beforereorder' | 'beforeswipe' | 'tap' | 'afterswipe'

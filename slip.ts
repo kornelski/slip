@@ -1,6 +1,18 @@
 /// <reference path="./slip.d.ts" />
 
-import { IMove, IOptions, IPosition, ISibling, ISlip, IState, ITarget, ITransform, TEvent } from './slip.d';
+import {
+    IMove,
+    IOptions,
+    IPosition,
+    ISibling,
+    ISlip,
+    IState,
+    IStateImplement,
+    IStates,
+    ITarget,
+    ITransform,
+    TEvent
+} from './slip.d';
 
 /*
     Slip - swiping and reordering in lists of elements on touch screens, no fuss.
@@ -117,11 +129,11 @@ import { IMove, IOptions, IPosition, ISibling, ISlip, IState, ITarget, ITransfor
 export class Slip implements ISlip {
     private static nullHandler = function() {};
     private state?: IState = undefined;
-    private target?: ITarget = undefined; // the tapped/swiped/reordered node with height and backed up styles
+    cancel!: ISlip['cancel'];
     private usingTouch: boolean = false; // there's no good way to detect touchscreen preference other than receiving a touch event (really, trust me).
     private mouseHandlersAttached: boolean = false;
-    private startPosition?: IPosition = undefined; // x,y,time where first touch began
-    private latestPosition?: IPosition = undefined; // x,y,time where the finger is currently
+    states!: ISlip['states'];
+    private target!: ITarget; // the tapped/swiped/reordered node with height and backed up styles
     private previousPosition?: IPosition = undefined; // x,y,time where the finger was ~100ms ago (for velocity calculation)
     private accessibility = {
         // Set values to false if you don't want Slip to manage them
@@ -142,22 +154,24 @@ export class Slip implements ISlip {
        Looks like WebKit bug #61824, but iOS Safari doesn't have that problem. */
     private compositorDoesNotOrderLayers = this.damnYouChrome;
     private canPreventScrolling: boolean = false;
-    // -webkit-mess
-    private testElementStyle = document.createElement('div').style;
+    private startPosition!: IPosition; // x,y,time where first touch began
     private transitionJSPropertyName = 'transition'.indexOf(this.testElementStyle.toString()) > -1 ? 'transition' : 'webkitTransition';
     private transformJSPropertyName: string = 'transform'.indexOf(this.testElementStyle.toString()) > -1 ? 'transform' : 'webkitTransform';
     private userSelectJSPropertyName = 'userSelect'.indexOf(this.testElementStyle.toString()) > -1 ? 'userSelect' : 'webkitUserSelect';
-    private hwLayerMagicStyle = this.testElementStyle[this.transformJSPropertyName] ? 'translateZ(0) ' : '';
-    private hwTopLayerMagicStyle = this.testElementStyle[this.transformJSPropertyName] ? 'translateZ(1px) ' : '';
+    private latestPosition!: IPosition; // x,y,time where the finger is currently
+    // -webkit-mess
+    private testElementStyle: {[index: string]: string} = document.createElement('div').style as any;
     private globalInstances = 0;
     private attachedBodyHandlerHack = false;
     private transformCSSPropertyName!: string;
+    private hwLayerMagicStyle = this.testElementStyle[this.transformJSPropertyName as any] ? 'translateZ(0) ' : '';
+    private hwTopLayerMagicStyle = this.testElementStyle[this.transformJSPropertyName as any] ? 'translateZ(1px) ' : '';
 
-    constructor(private container: HTMLElement | null, private options: IOptions) {
+    constructor(private container: HTMLElement, private options: IOptions) {
         this.transformCSSPropertyName = this.transformJSPropertyName === 'webkitTransform' ? '-webkit-transform' : 'transform';
         this.testElementStyle[this.transformJSPropertyName as string] = 'translateZ(0)';
         if ('string' === typeof (container as any as string))
-            this.container = document.querySelector<HTMLElement>(container as any as string);
+            this.container = document.querySelector<HTMLElement>(container as any as string) as HTMLElement;
         if (!container || !container.addEventListener) throw new Error('Please specify DOM node to attach to');
 
         if (!this || (this as any as Window) === window) return new Slip(container, options);
@@ -185,317 +199,34 @@ export class Slip implements ISlip {
         this.setState(this.states.idle);
         this.attach(container);
 
+        this.states = this._states();
+
         return this;
     }
 
-    get states() {
-        let outer = this;
+    detach() {
+        this.cancel();
 
-        const states = class {
-            constructor(private state: 'idle' | 'undecided' | 'swipe' | 'reorder') {}
+        this.container.removeEventListener('mousedown', this.onMouseDown, false);
+        this.container.removeEventListener('touchend', this.onTouchEnd, false);
+        this.container.removeEventListener('touchmove', this.onTouchMove, false);
+        this.container.removeEventListener('touchstart', this.onTouchStart, false);
+        this.container.removeEventListener('touchcancel', this.cancel, false);
 
-            init() {
-                switch (this.state) {
-                    case 'idle':
-                        this.idle();
-                        outer.usingTouch = false;
+        document.removeEventListener('selectionchange', this.onSelection, false);
 
-                        return {
-                            allowTextSelection: true,
-                        };
-                }
-            }
+        if (false !== this.accessibility.container.tabIndex as any as boolean) {
+            this.container.removeAttribute('tabIndex');
+        }
+        if (this.accessibility.container.ariaRole) {
+            this.container.removeAttribute('aria-role');
+        }
+        this.unSetChildNodesAriaRoles();
 
-            idle() {
-                outer.removeMouseHandlers();
-                if (outer.target) {
-                    outer.target.node.style.willChange = '';
-                    outer.target = null;
-                }
-            }
-
-            undecided() {
-                outer.target.height = outer.target.node.offsetHeight;
-                outer.target.node.style.willChange = outer.transformCSSPropertyName;
-                outer.target.node.style[outer.this.transitionJSPropertyName] = '';
-
-                let holdTimer = 0;
-
-                if (!outer.dispatch(outer.target.originalTarget, 'beforewait')) {
-                    if (outer.dispatch(outer.target.originalTarget, 'beforereorder')) {
-                        outer.setState(outer.states.reorder);
-                    }
-
-                } else {
-                    holdTimer = setTimeout(() => {
-                        const move = outer.getAbsoluteMovement();
-                        if (outer.canPreventScrolling && move.x < 15 && move.y < 25) {
-                            if (outer.dispatch(outer.target.originalTarget, 'beforereorder')) {
-                                outer.setState(outer.states.reorder);
-                            }
-                        }
-                    }, 300);
-                }
-
-                return {
-                    leaveState: () => clearTimeout(holdTimer),
-                    onMove: () => {
-                        const move = outer.getAbsoluteMovement();
-
-                        if (move.x > 20 && move.y < Math.max(100, outer.target.height || 0)) {
-                            if (outer.dispatch(outer.target.originalTarget, 'beforeswipe', {
-                                directionX: move.directionX,
-                                directionY: move.directionY
-                            })) {
-                                outer.setState(outer.states.swipe);
-                                return false;
-                            } else {
-                                outer.setState(outer.states.idle);
-                            }
-                        }
-                        if (move.y > 20) {
-                            outer.setState(outer.states.idle);
-                        }
-
-                        // Chrome likes sideways scrolling :(
-                        if (move.x > move.y * 1.2) return false;
-                    },
-
-                    onLeave: () => outer.setState(outer.states.idle),
-                    onEnd: () => {
-                        const allowDefault = outer.dispatch(outer.target.originalTarget, 'tap');
-                        outer.setState(outer.states.idle);
-                        return allowDefault;
-                    },
-                };
-            }
-
-            swipe() {
-                let swipeSuccess = false;
-                const container = outer.container;
-
-                const originalIndex = findIndex(outer.target, outer.container.childNodes);
-
-                container.classList.add('slip-swiping-container');
-
-                const removeClass = () => container.classList.remove('slip-swiping-container');
-
-                outer.target.height = outer.target.node.offsetHeight;
-
-                return {
-                    leaveState: () => {
-                        if (swipeSuccess) {
-                            outer.animateSwipe(target => {
-                                target.node.style[transformJSPropertyName] = target.baseTransform.original;
-                                target.node.style[this.transitionJSPropertyName] = '';
-                                if (outer.dispatch(target.node, 'afterswipe')) {
-                                    removeClass();
-                                    return true;
-                                } else {
-                                    outer.animateToZero(undefined, target);
-                                }
-                            });
-                        } else {
-                            outer.animateToZero(removeClass);
-                        }
-                    },
-
-                    onMove: () => {
-                        const move = outer.getTotalMovement();
-
-                        if (outer.target.height && Math.abs(move.y) < outer.target.height + 20) {
-                            if (outer.dispatch(outer.target.node, 'animateswipe', {
-                                x: move.x,
-                                originalIndex: originalIndex
-                            })) {
-                                outer.target.node.style[transformJSPropertyName] = 'translate(' + move.x + 'px,0) ' + hwLayerMagicStyle + outer.target.baseTransform.value;
-                            }
-                            return false;
-                        } else {
-                            outer.dispatch(outer.target.node, 'cancelswipe');
-                            outer.setState(outer.states.idle);
-                        }
-                    },
-
-                    onLeave: outer.state.onEnd,
-
-                    onEnd: () => {
-                        const move = outer.getAbsoluteMovement();
-                        const velocity = move.x / move.time;
-
-                        // How far out has the item been swiped?
-                        const swipedPercent = Math.abs((outer.startPosition.x - outer.previousPosition.x) / outer.container.clientWidth) * 100;
-
-                        const swiped = (velocity > outer.options.minimumSwipeVelocity && move.time > outer.options.minimumSwipeTime) || (outer.options.keepSwipingPercent && swipedPercent > outer.options.keepSwipingPercent);
-
-                        if (swiped) {
-                            if (outer.dispatch(outer.target.node, 'swipe', {
-                                direction: move.directionX,
-                                originalIndex: originalIndex
-                            })) {
-                                swipeSuccess = true; // can't animate here, leaveState overrides anim
-                            }
-                        } else {
-                            outer.dispatch(outer.target.node, 'cancelswipe');
-                        }
-                        outer.setState(outer.states.idle);
-                        return !swiped;
-                    },
-                };
-            }
-
-            reorder() {
-                if (outer.target.node.focus && outer.accessibility.items.focus) {
-                    outer.target.node.focus();
-                }
-
-                outer.target.height = outer.target.node.offsetHeight;
-
-                let nodes: NodeListOf<Node & ChildNode>;
-                if (outer.options.ignoredElements.length) {
-                    const container = outer.container;
-                    let query = container.tagName.toLowerCase();
-                    if (container.getAttribute('id')) {
-                        query = '#' + container.getAttribute('id');
-                    } else if (container.classList.length) {
-                        query += '.' + (container.getAttribute('class') as string)
-                            .replace(' ', '.');
-                    }
-                    query += ' > ';
-                    outer.options.ignoredElements.forEach((selector) => {
-                        query += ':not(' + selector + ')';
-                    });
-                    try {
-                        nodes = (container.parentNode as Element).querySelectorAll(query);
-                    } catch (err) {
-                        if (err instanceof DOMException && err.name === 'SyntaxError')
-                            throw new Error('ignoredElements you specified contain invalid query');
-                        else
-                            throw err;
-                    }
-                } else {
-                    nodes = outer.container.childNodes as NodeListOf<Node & ChildNode>;
-                }
-                const originalIndex = findIndex(outer.target, nodes);
-                let mouseOutsideTimer: number | null;
-                const zero = outer.target.node.offsetTop + outer.target.height / 2;
-                const otherNodes: {node: Node & ChildNode, baseTransform: ITransform, pos: number}[] = [];
-                for (let i = 0; i < nodes.length; i++) {
-                    if (nodes[i].nodeType != 1 || nodes[i] === outer.target.node) continue;
-                    const t = (nodes[i] as HTMLElement).offsetTop;
-                    (nodes[i] as HTMLElement).style[this.transitionJSPropertyName] = transformCSSPropertyName + ' 0.2s ease-in-out';
-                    otherNodes.push({
-                        node: nodes[i],
-                        baseTransform: getTransform(nodes[i] as HTMLElement),
-                        pos: t + (t < zero ? (nodes[i] as HTMLElement).offsetHeight : 0) - zero,
-                    });
-                }
-
-                outer.target.node.classList.add('slip-reordering');
-                outer.target.node.style.zIndex = '99999';
-                outer.target.node.style[outer.userSelectJSPropertyName] = 'none';
-                if (outer.compositorDoesNotOrderLayers) {
-                    // Chrome's compositor doesn't sort 2D layers
-                    outer.container.style.webkitTransformStyle = 'preserve-3d';
-                }
-
-                const onMove = () => {
-                    /*jshint validthis:true */
-
-                    outer.updateScrolling();
-
-                    if (mouseOutsideTimer) {
-                        // don't care where the mouse is as long as it moves
-                        clearTimeout(mouseOutsideTimer);
-                        mouseOutsideTimer = null;
-                    }
-
-                    const move = outer.getTotalMovement();
-                    outer.target.node.style[outer.transformJSPropertyName] = 'translate(0,' + move.y + 'px) ' + hwTopLayerMagicStyle + outer.target.baseTransform.value;
-
-                    const height = outer.target.height || 0;
-                    otherNodes.forEach(function(o) {
-                        let off = 0;
-                        if (o.pos < 0 && move.y < 0 && o.pos > move.y) {
-                            off = height;
-                        }
-                        else if (o.pos > 0 && move.y > 0 && o.pos < move.y) {
-                            off = -height;
-                        }
-                        // FIXME: should change accelerated/non-accelerated state lazily
-                        (o.node as HTMLElement).style[outer.transformJSPropertyName] = off ? 'translate(0,' + off + 'px) ' + hwLayerMagicStyle + o.baseTransform.value : o.baseTransform.original;
-                    });
-                    return false;
-                };
-
-                onMove();
-
-                return {
-                    leaveState: () => {
-                        if (mouseOutsideTimer) clearTimeout(mouseOutsideTimer);
-
-                        if (outer.compositorDoesNotOrderLayers) {
-                            outer.container.style.webkitTransformStyle = '';
-                        }
-
-                        if (outer.container.focus && outer.accessibility.container.focus) {
-                            outer.container.focus();
-                        }
-
-                        outer.target.node.classList.remove('slip-reordering');
-                        outer.target.node.style[outer.userSelectJSPropertyName] = '';
-
-                        outer.animateToZero((target: ITarget) => target.node.style.zIndex = '');
-                        otherNodes.forEach(o => {
-                            (o.node as HTMLElement).style[outer.transformJSPropertyName] = o.baseTransform.original;
-                            (o.node as HTMLElement).style[this.transitionJSPropertyName] = ''; // FIXME: animate to new position
-                        });
-                    },
-
-                    onMove: onMove,
-
-                    onLeave: () => {
-                        // don't let element get stuck if mouse left the window
-                        // but don't cancel immediately as it'd be annoying near window edges
-                        if (mouseOutsideTimer) clearTimeout(mouseOutsideTimer);
-                        mouseOutsideTimer = setTimeout(() => {
-                                mouseOutsideTimer = null;
-                            outer.cancel();
-                            }, 700
-                        )
-                        ;
-                    },
-
-                    onEnd: () => {
-                        const move = outer.getTotalMovement();
-                        let i, spliceIndex;
-                        if (move.y < 0) {
-                            for (i = 0; i < otherNodes.length; i++) {
-                                if (otherNodes[i].pos > move.y) {
-                                    break;
-                                }
-                            }
-                            spliceIndex = i;
-                        } else {
-                            for (i = otherNodes.length - 1; i >= 0; i--) {
-                                if (otherNodes[i].pos < move.y) {
-                                    break;
-                                }
-                            }
-                            spliceIndex = i + 1;
-                        }
-
-                        outer.dispatch(outer.target.node, 'reorder', {
-                            spliceIndex: spliceIndex,
-                            originalIndex: originalIndex,
-                            insertBefore: otherNodes[spliceIndex] ? (otherNodes[spliceIndex] as any).node : undefined,
-                        });
-
-                        outer.setState(outer.states.idle);
-                        return false;
-                    },
-                };
-            }
+        this.globalInstances--;
+        if (!this.globalInstances && this.attachedBodyHandlerHack) {
+            this.attachedBodyHandlerHack = false;
+            document.body.removeEventListener('touchstart', Slip.nullHandler, false);
         }
     }
 
@@ -536,29 +267,18 @@ export class Slip implements ISlip {
         // mousemove and mouseup are attached dynamically
     }
 
-    detach() {
-        this.cancel();
-
-        this.container.removeEventListener('mousedown', this.onMouseDown, false);
-        this.container.removeEventListener('touchend', this.onTouchEnd, false);
-        this.container.removeEventListener('touchmove', this.onTouchMove, false);
-        this.container.removeEventListener('touchstart', this.onTouchStart, false);
-        this.container.removeEventListener('touchcancel', this.cancel, false);
-
-        document.removeEventListener('selectionchange', this.onSelection, false);
-
-        if (false !== accessibility.container.tabIndex as any as boolean) {
-            this.container.removeAttribute('tabIndex');
+    setState(newStateCtor: () => void) {
+        if (this.state) {
+            if (this.state.ctor === newStateCtor) return;
+            if (this.state.leaveState) this.state.leaveState.call(this);
         }
-        if (accessibility.container.ariaRole) {
-            this.container.removeAttribute('aria-role');
-        }
-        this.unSetChildNodesAriaRoles();
 
-        this.globalInstances--;
-        if (!this.globalInstances && this.attachedBodyHandlerHack) {
-            this.attachedBodyHandlerHack = false;
-            document.body.removeEventListener('touchstart', Slip.nullHandler, false);
+        // Must be re-entrant in case ctor changes state
+        const prevState = this.state;
+        const nextState = newStateCtor.call(this);
+        if (this.state === prevState) {
+            nextState.ctor = newStateCtor;
+            this.state = nextState;
         }
     }
 
@@ -588,35 +308,7 @@ export class Slip implements ISlip {
         }
     }
 
-    setState(newStateCtor: {new(): any}) {
-        if (this.state) {
-            if (this.state.ctor === newStateCtor) return;
-            if (this.state.leaveState) this.state.leaveState.call(this);
-        }
-
-        // Must be re-entrant in case ctor changes state
-        const prevState = this.state;
-        const nextState = newStateCtor.call(this);
-        if (this.state === prevState) {
-            nextState.ctor = newStateCtor;
-            this.state = nextState;
-        }
-    }
-
-    findTargetNode(targetNode: Node | null): Node | null {
-        while (targetNode && targetNode.parentNode !== this.container) {
-            if (targetNode.parentNode != null)
-                targetNode = targetNode.parentNode;
-        }
-        return targetNode;
-    }
-
-    onContainerFocus(e: TouchEvent) {
-        e.stopPropagation();
-        this.setChildNodesAriaRoles();
-    }
-
-    setTarget(e: MSInputMethodContext): boolean {
+    setTarget(e: MouseEvent & MSGesture): boolean {
         const targetNode = this.findTargetNode(e.target);
         if (!targetNode) {
             this.setState(this.states.idle);
@@ -643,14 +335,36 @@ export class Slip implements ISlip {
         return true;
     }
 
-    getAbsoluteMovement(): IMove {
-        const move = this.getTotalMovement();
+    findTargetNode(targetNode: Node | null): Node | null {
+        while (targetNode && targetNode.parentNode !== this.container) {
+            if (targetNode.parentNode != null)
+                targetNode = targetNode.parentNode;
+        }
+        return targetNode;
+    }
+
+    onContainerFocus(e: TouchEvent) {
+        e.stopPropagation();
+        this.setChildNodesAriaRoles();
+    }
+
+    getAbsoluteMovement(): Required<IMove> {
+        const move = this.getTotalMovement() as Required<IMove>;
         return {
             x: Math.abs(move.x),
             y: Math.abs(move.y),
             time: move.time,
             directionX: move.x < 0 ? 'left' : 'right',
             directionY: move.y < 0 ? 'up' : 'down',
+        } as any;
+    }
+
+    getTotalMovement(): IPosition {
+        const scrollOffset = this.target.scrollContainer.scrollTop - this.target.origScrollTop;
+        return {
+            x: this.latestPosition.x - this.startPosition.x,
+            y: this.latestPosition.y - this.startPosition.y + scrollOffset,
+            time: this.latestPosition.time - this.startPosition.time,
         };
     }
 
@@ -812,13 +526,20 @@ export class Slip implements ISlip {
         }
     }
 
-    getTotalMovement(): ISlip['latestPosition'] {
-        const scrollOffset = this.target.scrollContainer.scrollTop - this.target.origScrollTop;
-        return {
-            x: this.latestPosition.x - this.startPosition.x,
-            y: this.latestPosition.y - this.startPosition.y + scrollOffset,
-            time: this.latestPosition.time - this.startPosition.time,
-        };
+    animateToZero(callback?: (target: ITarget) => void, target?: ITarget) {
+        // save, because this.target/container could change during animation
+        target = target || this.target;
+
+        target.node.style[this.transitionJSPropertyName as any] = this.transformCSSPropertyName + ' 0.1s ease-out';
+        target.node.style[this.transformJSPropertyName as any] = 'translate(0,0) ' + this.hwLayerMagicStyle + target.baseTransform.value;
+        setTimeout(() => {
+                if (target != null) {
+                    target.node.style[this.transitionJSPropertyName as any] = '';
+                    target.node.style[this.transformJSPropertyName as any] = target.baseTransform.original;
+                }
+                if (callback) callback.call(this, target);
+            }, 101
+        );
     }
 
     getSiblings(target: ITarget): ISibling[] {
@@ -855,44 +576,30 @@ export class Slip implements ISlip {
         scrollable.scrollTop = Math.max(0, Math.min(maxScrollTop, scrollable.scrollTop + offset));
     }
 
-    animateToZero(callback: (target: ITarget) => void, target: ITarget) {
-        // save, because this.target/container could change during animation
-        target = target || this.target;
-
-        target.node.style[this.transitionJSPropertyName] = this.transformCSSPropertyName + ' 0.1s ease-out';
-        target.node.style[this.transformJSPropertyName] = 'translate(0,0) ' + this.hwLayerMagicStyle + target.baseTransform.value;
-        setTimeout(() => {
-            target.node.style[this.transitionJSPropertyName] = '';
-            target.node.style[this.transformJSPropertyName] = target.baseTransform.original;
-                if (callback) callback.call(this, target);
-            }, 101
-        );
-    }
-
     animateSwipe(callback: (target: ITarget) => void): void | boolean {
         const target: ITarget = this.target;
         const siblings = this.getSiblings(target);
-        const emptySpaceTransformStyle = 'translate(0,' + this.target.height + 'px) ' + hwLayerMagicStyle + ' ';
+        const emptySpaceTransformStyle = 'translate(0,' + this.target.height + 'px) ' + this.hwLayerMagicStyle + ' ';
 
         // FIXME: animate with real velocity
-        target.node.style[this.transitionJSPropertyName] = 'all 0.1s linear';
-        target.node.style[this.transformJSPropertyName] = ' translate(' + (this.getTotalMovement().x > 0 ? '' : '-') + '100%,0) ' + hwLayerMagicStyle + target.baseTransform.value;
+        target.node.style[this.transitionJSPropertyName as any] = 'all 0.1s linear';
+        target.node.style[this.transformJSPropertyName as any] = ' translate(' + (this.getTotalMovement().x > 0 ? '' : '-') + '100%,0) ' + this.hwLayerMagicStyle + target.baseTransform.value;
 
         setTimeout(() => {
                 if (callback.call(this, target)) {
                     siblings.forEach((o: ISibling) => {
-                        o.node.style[this.transitionJSPropertyName] = '';
-                        o.node.style[this.transformJSPropertyName] = emptySpaceTransformStyle + o.baseTransform.value;
+                        o.node.style[this.transitionJSPropertyName as any] = '';
+                        o.node.style[this.transformJSPropertyName as any] = emptySpaceTransformStyle + o.baseTransform.value;
                     });
                     setTimeout(() => {
                         siblings.forEach((o: ISibling) => {
-                            o.node.style[this.transitionJSPropertyName] = transformCSSPropertyName + ' 0.1s ease-in-out';
-                            o.node.style[this.transformJSPropertyName] = 'translate(0,0) ' + hwLayerMagicStyle + o.baseTransform.value;
+                            o.node.style[this.transitionJSPropertyName as any] = this.transformCSSPropertyName + ' 0.1s ease-in-out';
+                            o.node.style[this.transformJSPropertyName as any] = 'translate(0,0) ' + this.hwLayerMagicStyle + o.baseTransform.value;
                         });
                         setTimeout(() => {
                             siblings.forEach((o: ISibling) => {
-                                o.node.style[this.transitionJSPropertyName] = '';
-                                o.node.style[this.transformJSPropertyName] = o.baseTransform.original;
+                                o.node.style[this.transitionJSPropertyName as any] = '';
+                                o.node.style[this.transformJSPropertyName as any] = o.baseTransform.original;
                             });
                         }, 101);
                     }, 1);
@@ -901,8 +608,318 @@ export class Slip implements ISlip {
         );
     }
 
+    private _states(): IStates {
+        let outer = this;
+
+        return class {
+            /*
+            init() {
+                switch (this.state) {
+                    case 'idle':
+                        this.idle();
+                        outer.usingTouch = false;
+
+                        return {
+                            allowTextSelection: true,
+                        };
+                }
+            }*/
+
+            static idle() {
+                outer.removeMouseHandlers();
+                if (outer.target) {
+                    outer.target.node.style.willChange = '';
+                    delete outer.target;
+                }
+            }
+
+            static undecided(): IStateImplement {
+                outer.target.height = outer.target.node.offsetHeight;
+                outer.target.node.style.willChange = outer.transformCSSPropertyName;
+                outer.target.node.style[outer.transitionJSPropertyName as any] = '';
+
+                let holdTimer = 0;
+
+                if (!outer.dispatch(outer.target.originalTarget, 'beforewait')) {
+                    if (outer.dispatch(outer.target.originalTarget, 'beforereorder')) {
+                        outer.setState(outer.states.reorder);
+                    }
+
+                } else {
+                    holdTimer = setTimeout(() => {
+                        const move: Required<IMove> = outer.getAbsoluteMovement() as any;
+                        if (outer.canPreventScrolling && move.x < 15 && move.y < 25) {
+                            if (outer.dispatch(outer.target.originalTarget, 'beforereorder')) {
+                                outer.setState(outer.states.reorder);
+                            }
+                        }
+                    }, 300);
+                }
+
+                return {
+                    leaveState: () => clearTimeout(holdTimer),
+                    onMove: () => {
+                        const move = outer.getAbsoluteMovement();
+
+                        if (move.x > 20 && move.y < Math.max(100, outer.target.height || 0)) {
+                            if (outer.dispatch(outer.target.originalTarget, 'beforeswipe', {
+                                directionX: move.directionX,
+                                directionY: move.directionY
+                            })) {
+                                outer.setState(outer.states.swipe);
+                                return false;
+                            } else {
+                                outer.setState(outer.states.idle);
+                            }
+                        }
+                        if (move.y > 20) {
+                            outer.setState(outer.states.idle);
+                        }
+
+                        // Chrome likes sideways scrolling :(
+                        if (move.x > move.y * 1.2) return false;
+                    },
+
+                    onLeave: () => outer.setState(outer.states.idle),
+                    onEnd: () => {
+                        const allowDefault = outer.dispatch(outer.target.originalTarget, 'tap');
+                        outer.setState(outer.states.idle);
+                        return allowDefault;
+                    },
+                };
+            }
+
+            static swipe(): IStateImplement {
+                let swipeSuccess = false;
+                const container = outer.container;
+
+                const originalIndex = outer.findIndex(outer.target, outer.container.childNodes);
+
+                container.classList.add('slip-swiping-container');
+
+                const removeClass = () => container.classList.remove('slip-swiping-container');
+
+                outer.target.height = outer.target.node.offsetHeight;
+
+                return {
+                    leaveState: () => {
+                        if (swipeSuccess) {
+                            outer.animateSwipe(target => {
+                                target.node.style[outer.transformJSPropertyName as any] = target.baseTransform.original;
+                                target.node.style[outer.transitionJSPropertyName as any] = '';
+                                if (outer.dispatch(target.node, 'afterswipe')) {
+                                    removeClass();
+                                    return true;
+                                } else {
+                                    outer.animateToZero(undefined, target);
+                                }
+                            });
+                        } else {
+                            outer.animateToZero(removeClass);
+                        }
+                    },
+
+                    onMove: () => {
+                        const move = outer.getTotalMovement();
+
+                        if (outer.target.height && Math.abs(move.y) < outer.target.height + 20) {
+                            if (outer.dispatch(outer.target.node, 'animateswipe', {
+                                x: move.x,
+                                originalIndex: originalIndex
+                            })) {
+                                outer.target.node.style[outer.transformJSPropertyName as any] = 'translate(' + move.x + 'px,0) ' + outer.hwLayerMagicStyle + outer.target.baseTransform.value;
+                            }
+                            return false;
+                        } else {
+                            outer.dispatch(outer.target.node, 'cancelswipe');
+                            outer.setState(outer.states.idle);
+                        }
+                    },
+
+                    onLeave: this.swipe().onEnd,
+
+                    onEnd: () => {
+                        const move = outer.getAbsoluteMovement();
+                        const velocity = move.x / move.time;
+
+                        // How far out has the item been swiped?
+                        const swipedPercent = Math.abs((outer.startPosition.x - outer.previousPosition.x) / outer.container.clientWidth) * 100;
+
+                        const swiped = (velocity > outer.options.minimumSwipeVelocity && move.time > outer.options.minimumSwipeTime) || (outer.options.keepSwipingPercent && swipedPercent > outer.options.keepSwipingPercent);
+
+                        if (swiped) {
+                            if (outer.dispatch(outer.target.node, 'swipe', {
+                                direction: move.directionX,
+                                originalIndex: originalIndex
+                            })) {
+                                swipeSuccess = true; // can't animate here, leaveState overrides anim
+                            }
+                        } else {
+                            outer.dispatch(outer.target.node, 'cancelswipe');
+                        }
+                        outer.setState(outer.states.idle);
+                        return !swiped;
+                    },
+                };
+            }
+
+            static reorder(): IStateImplement {
+                if (outer.target.node.focus && outer.accessibility.items.focus) {
+                    outer.target.node.focus();
+                }
+
+                outer.target.height = outer.target.node.offsetHeight;
+
+                let nodes: NodeListOf<Node & ChildNode>;
+                if (outer.options.ignoredElements.length) {
+                    const container = outer.container;
+                    let query = container.tagName.toLowerCase();
+                    if (container.getAttribute('id')) {
+                        query = '#' + container.getAttribute('id');
+                    } else if (container.classList.length) {
+                        query += '.' + (container.getAttribute('class') as string)
+                            .replace(' ', '.');
+                    }
+                    query += ' > ';
+                    outer.options.ignoredElements.forEach((selector) => {
+                        query += ':not(' + selector + ')';
+                    });
+                    try {
+                        nodes = (container.parentNode as Element).querySelectorAll(query);
+                    } catch (err) {
+                        if (err instanceof DOMException && err.name === 'SyntaxError')
+                            throw new Error('ignoredElements you specified contain invalid query');
+                        else
+                            throw err;
+                    }
+                } else {
+                    nodes = outer.container.childNodes as NodeListOf<Node & ChildNode>;
+                }
+                const originalIndex = outer.findIndex(outer.target, nodes);
+                let mouseOutsideTimer: number | null;
+                const zero = outer.target.node.offsetTop + outer.target.height / 2;
+                const otherNodes: {node: Node & ChildNode, baseTransform: ITransform, pos: number}[] = [];
+                for (let i = 0; i < nodes.length; i++) {
+                    if (nodes[i].nodeType != 1 || nodes[i] === outer.target.node) continue;
+                    const t = (nodes[i] as HTMLElement).offsetTop;
+                    (nodes[i] as HTMLElement).style[outer.transitionJSPropertyName as any] = outer.transformCSSPropertyName + ' 0.2s ease-in-out';
+                    otherNodes.push({
+                        node: nodes[i],
+                        baseTransform: outer.getTransform(nodes[i] as HTMLElement),
+                        pos: t + (t < zero ? (nodes[i] as HTMLElement).offsetHeight : 0) - zero,
+                    });
+                }
+
+                outer.target.node.classList.add('slip-reordering');
+                outer.target.node.style.zIndex = '99999';
+                outer.target.node.style[outer.userSelectJSPropertyName as any] = 'none';
+                if (outer.compositorDoesNotOrderLayers) {
+                    // Chrome's compositor doesn't sort 2D layers
+                    outer.container.style.webkitTransformStyle = 'preserve-3d';
+                }
+
+                const onMove = () => {
+                    /*jshint validthis:true */
+
+                    outer.updateScrolling();
+
+                    if (mouseOutsideTimer) {
+                        // don't care where the mouse is as long as it moves
+                        clearTimeout(mouseOutsideTimer);
+                        mouseOutsideTimer = null;
+                    }
+
+                    const move = outer.getTotalMovement();
+                    outer.target.node.style[outer.transformJSPropertyName as any] = 'translate(0,' + move.y + 'px) ' + outer.hwTopLayerMagicStyle + outer.target.baseTransform.value;
+
+                    const height = outer.target.height || 0;
+                    otherNodes.forEach(function(o) {
+                        let off = 0;
+                        if (o.pos < 0 && move.y < 0 && o.pos > move.y) {
+                            off = height;
+                        }
+                        else if (o.pos > 0 && move.y > 0 && o.pos < move.y) {
+                            off = -height;
+                        }
+                        // FIXME: should change accelerated/non-accelerated state lazily
+                        (o.node as HTMLElement).style[outer.transformJSPropertyName as any] = off ? 'translate(0,' + off + 'px) ' + outer.hwLayerMagicStyle + o.baseTransform.value : o.baseTransform.original;
+                    });
+                    return false;
+                };
+
+                onMove();
+
+                return {
+                    leaveState: () => {
+                        if (mouseOutsideTimer) clearTimeout(mouseOutsideTimer);
+
+                        if (outer.compositorDoesNotOrderLayers) {
+                            outer.container.style.webkitTransformStyle = '';
+                        }
+
+                        if (outer.container.focus && outer.accessibility.container.focus) {
+                            outer.container.focus();
+                        }
+
+                        outer.target.node.classList.remove('slip-reordering');
+                        outer.target.node.style[outer.userSelectJSPropertyName as any] = '';
+
+                        outer.animateToZero((target: ITarget) => target.node.style.zIndex = '');
+                        otherNodes.forEach(o => {
+                            (o.node as HTMLElement).style[outer.transformJSPropertyName as any] = o.baseTransform.original;
+                            (o.node as HTMLElement).style[outer.transitionJSPropertyName as any] = ''; // FIXME: animate to new position
+                        });
+                    },
+
+                    onMove: onMove,
+
+                    onLeave: () => {
+                        // don't let element get stuck if mouse left the window
+                        // but don't cancel immediately as it'd be annoying near window edges
+                        if (mouseOutsideTimer) clearTimeout(mouseOutsideTimer);
+                        mouseOutsideTimer = setTimeout(() => {
+                                mouseOutsideTimer = null;
+                                outer.cancel();
+                            }, 700
+                        )
+                        ;
+                    },
+
+                    onEnd: () => {
+                        const move = outer.getTotalMovement();
+                        let i, spliceIndex;
+                        if (move.y < 0) {
+                            for (i = 0; i < otherNodes.length; i++) {
+                                if (otherNodes[i].pos > move.y) {
+                                    break;
+                                }
+                            }
+                            spliceIndex = i;
+                        } else {
+                            for (i = otherNodes.length - 1; i >= 0; i--) {
+                                if (otherNodes[i].pos < move.y) {
+                                    break;
+                                }
+                            }
+                            spliceIndex = i + 1;
+                        }
+
+                        outer.dispatch(outer.target.node, 'reorder', {
+                            spliceIndex: spliceIndex,
+                            originalIndex: originalIndex,
+                            insertBefore: otherNodes[spliceIndex] ? (otherNodes[spliceIndex] as any).node : undefined,
+                        });
+
+                        outer.setState(outer.states.idle);
+                        return false;
+                    },
+                };
+            }
+        }
+    }
+
     private getTransform(node: HTMLElement): ITransform {
-        const transform = node.style[this.transformJSPropertyName];
+        const transform = node.style[this.transformJSPropertyName as any];
         if (transform) {
             return {
                 value: transform,
