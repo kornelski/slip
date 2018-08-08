@@ -249,7 +249,7 @@ exports.Slip = function () {
                     leaveState: function () { return clearTimeout(holdTimer); },
                     onMove: function () {
                         var move = _this.getAbsoluteMovement();
-                        if (move.x > 20 && move.y < Math.max(100, _this.target.height)) {
+                        if (move.x > 20 && move.y < Math.max(100, _this.target.height || 0)) {
                             if (_this.dispatch(_this.target.originalTarget, 'beforeswipe', {
                                 directionX: move.directionX,
                                 directionY: move.directionY
@@ -304,7 +304,7 @@ exports.Slip = function () {
                     },
                     onMove: function () {
                         var move = _this.getTotalMovement();
-                        if (Math.abs(move.y) < _this.target.height + 20) {
+                        if (_this.target.height && Math.abs(move.y) < _this.target.height + 20) {
                             if (_this.dispatch(_this.target.node, 'animateswipe', {
                                 x: move.x,
                                 originalIndex: originalIndex
@@ -406,7 +406,7 @@ exports.Slip = function () {
                     }
                     var move = _this.getTotalMovement();
                     _this.target.node.style[transformJSPropertyName] = 'translate(0,' + move.y + 'px) ' + hwTopLayerMagicStyle + _this.target.baseTransform.value;
-                    var height = _this.target.height;
+                    var height = _this.target.height || 0;
                     otherNodes.forEach(function (o) {
                         var off = 0;
                         if (o.pos < 0 && move.y < 0 && o.pos > move.y) {
@@ -472,7 +472,7 @@ exports.Slip = function () {
                         _this.dispatch(_this.target.node, 'reorder', {
                             spliceIndex: spliceIndex,
                             originalIndex: originalIndex,
-                            insertBefore: otherNodes[spliceIndex] ? otherNodes[spliceIndex].node : null,
+                            insertBefore: otherNodes[spliceIndex] ? otherNodes[spliceIndex].node : undefined,
                         });
                         _this.setState(_this.states.idle);
                         return false;
@@ -533,29 +533,30 @@ exports.Slip = function () {
             }
         },
         setState: function (newStateCtor) {
-            if (this.state) {
-                if (this.state.ctor === newStateCtor)
+            if (_this.state) {
+                if (_this.state.ctor === newStateCtor)
                     return;
-                if (this.state.leaveState)
-                    this.state.leaveState.call(this);
+                if (_this.state.leaveState)
+                    _this.state.leaveState.call(_this);
             }
             // Must be re-entrant in case ctor changes state
-            var prevState = this.state;
-            var nextState = newStateCtor.call(this);
-            if (this.state === prevState) {
+            var prevState = _this.state;
+            var nextState = newStateCtor.call(_this);
+            if (_this.state === prevState) {
                 nextState.ctor = newStateCtor;
-                this.state = nextState;
+                _this.state = nextState;
             }
         },
         findTargetNode: function (targetNode) {
-            while (targetNode && targetNode.parentNode !== this.container) {
-                targetNode = targetNode.parentNode;
+            while (targetNode && targetNode.parentNode !== _this.container) {
+                if (targetNode.parentNode != null)
+                    targetNode = targetNode.parentNode;
             }
             return targetNode;
         },
         onContainerFocus: function (e) {
             e.stopPropagation();
-            this.setChildNodesAriaRoles();
+            _this.setChildNodesAriaRoles();
         },
         setChildNodesAriaRoles: function () {
             var nodes = _this.container.childNodes;
@@ -585,16 +586,16 @@ exports.Slip = function () {
         },
         onSelection: function (e) {
             e.stopPropagation();
-            var isRelated = e.target === document || this.findTargetNode(e);
+            var isRelated = e.target === document || _this.findTargetNode(e);
             var iOS = /(iPhone|iPad|iPod)/i.test(navigator.userAgent) && !/(Android|Windows)/i.test(navigator.userAgent);
             if (!isRelated)
                 return;
             if (iOS) {
                 // iOS doesn't allow selection to be prevented
-                this.setState(this.states.idle);
+                _this.setState(_this.states.idle);
             }
             else {
-                if (!this.state.allowTextSelection) {
+                if (!_this.state.allowTextSelection) {
                     e.preventDefault();
                 }
             }
@@ -621,21 +622,21 @@ exports.Slip = function () {
         },
         onMouseLeave: function (e) {
             e.stopPropagation();
-            if (this.usingTouch)
+            if (_this.usingTouch)
                 return;
             if (e.target === document.documentElement || e.relatedTarget === document.documentElement) {
-                if (this.state.onLeave) {
-                    this.state.onLeave.call(this);
+                if (_this.state.onLeave) {
+                    _this.state.onLeave.call(_this);
                 }
             }
         },
         onMouseDown: function (e) {
             e.stopPropagation();
-            if (this.usingTouch || e.button != 0 || !this.setTarget(e))
+            if (_this.usingTouch || e.button != 0 || !_this.setTarget(e))
                 return;
-            this.addMouseHandlers(); // mouseup, etc.
-            this.canPreventScrolling = true; // or rather it doesn't apply to mouse
-            this.startAtPosition({
+            _this.addMouseHandlers(); // mouseup, etc.
+            _this.canPreventScrolling = true; // or rather it doesn't apply to mouse
+            _this.startAtPosition({
                 x: e.clientX,
                 y: e.clientY,
                 time: e.timeStamp,
@@ -643,25 +644,25 @@ exports.Slip = function () {
         },
         onTouchStart: function (e) {
             e.stopPropagation();
-            this.usingTouch = true;
-            this.canPreventScrolling = true;
+            _this.usingTouch = true;
+            _this.canPreventScrolling = true;
             // This implementation cares only about single touch
             if (e.touches.length > 1) {
-                this.setState(this.states.idle);
+                _this.setState(_this.states.idle);
                 return;
             }
-            if (!this.setTarget(e))
+            if (e.target != null && !_this.setTarget(e))
                 return;
-            this.startAtPosition({
+            _this.startAtPosition({
                 x: e.touches[0].clientX,
                 y: e.touches[0].clientY,
                 time: e.timeStamp,
             });
         },
         setTarget: function (e) {
-            var targetNode = this.findTargetNode(e.target);
+            var targetNode = _this.findTargetNode(e.target);
             if (!targetNode) {
-                this.setState(this.states.idle);
+                _this.setState(_this.states.idle);
                 return false;
             }
             //check for a scrollable parent
@@ -669,12 +670,12 @@ exports.Slip = function () {
             while (scrollContainer) {
                 if (scrollContainer == document.body)
                     break;
-                if (scrollContainer.scrollHeight > scrollContainer.clientHeight && window.getComputedStyle(scrollContainer)['overflow-y'] != 'visible')
+                if (scrollContainer.scrollHeight > scrollContainer.clientHeight && window.getComputedStyle(scrollContainer).overflowY !== 'visible')
                     break;
                 scrollContainer = scrollContainer.parentNode;
             }
             scrollContainer = scrollContainer || document.body;
-            this.target = {
+            _this.target = {
                 originalTarget: e.target,
                 node: targetNode,
                 scrollContainer: scrollContainer,
@@ -685,27 +686,27 @@ exports.Slip = function () {
             return true;
         },
         startAtPosition: function (pos) {
-            this.startPosition = this.previousPosition = this.latestPosition = pos;
-            this.setState(this.states.undecided);
+            _this.startPosition = _this.previousPosition = _this.latestPosition = pos;
+            _this.setState(_this.states.undecided);
         },
         updatePosition: function (e, pos) {
-            if (this.target == null) {
+            if (_this.target == null) {
                 return;
             }
-            this.latestPosition = pos;
-            if (this.state.onMove) {
-                if (this.state.onMove.call(this) === false) {
+            _this.latestPosition = pos;
+            if (_this.state.onMove) {
+                if (_this.state.onMove.call(_this) === false) {
                     e.preventDefault();
                 }
             }
             // sample latestPosition 100ms for velocity
-            if (this.latestPosition.time - this.previousPosition.time > 100) {
-                this.previousPosition = this.latestPosition;
+            if (_this.latestPosition.time - _this.previousPosition.time > 100) {
+                _this.previousPosition = _this.latestPosition;
             }
         },
         onMouseMove: function (e) {
             e.stopPropagation();
-            this.updatePosition(e, {
+            _this.updatePosition(e, {
                 x: e.clientX,
                 y: e.clientY,
                 time: e.timeStamp,
@@ -713,19 +714,19 @@ exports.Slip = function () {
         },
         onTouchMove: function (e) {
             e.stopPropagation();
-            this.updatePosition(e, {
+            _this.updatePosition(e, {
                 x: e.touches[0].clientX,
                 y: e.touches[0].clientY,
                 time: e.timeStamp,
             });
             // In Apple's touch model only the first move event after touchstart can prevent scrolling (and event.cancelable is broken)
-            this.canPreventScrolling = false;
+            _this.canPreventScrolling = false;
         },
         onMouseUp: function (e) {
             e.stopPropagation();
-            if (this.usingTouch || e.button !== 0)
+            if (_this.usingTouch || e.button !== 0)
                 return;
-            if (this.state.onEnd && false === this.state.onEnd.call(this)) {
+            if (_this.state.onEnd && false === _this.state.onEnd.call(_this)) {
                 e.preventDefault();
             }
         },
@@ -806,13 +807,12 @@ exports.Slip = function () {
             }, 101);
         },
         animateSwipe: function (callback) {
-            var _this = this;
-            var target = this.target;
-            var siblings = this.getSiblings(target);
-            var emptySpaceTransformStyle = 'translate(0,' + this.target.height + 'px) ' + hwLayerMagicStyle + ' ';
+            var target = _this.target;
+            var siblings = _this.getSiblings(target);
+            var emptySpaceTransformStyle = 'translate(0,' + _this.target.height + 'px) ' + hwLayerMagicStyle + ' ';
             // FIXME: animate with real velocity
             target.node.style[transitionJSPropertyName] = 'all 0.1s linear';
-            target.node.style[transformJSPropertyName] = ' translate(' + (this.getTotalMovement().x > 0 ? '' : '-') + '100%,0) ' + hwLayerMagicStyle + target.baseTransform.value;
+            target.node.style[transformJSPropertyName] = ' translate(' + (_this.getTotalMovement().x > 0 ? '' : '-') + '100%,0) ' + hwLayerMagicStyle + target.baseTransform.value;
             setTimeout(function () {
                 if (callback.call(_this, target)) {
                     siblings.forEach(function (o) {

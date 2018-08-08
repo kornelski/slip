@@ -1,6 +1,6 @@
 /// <reference path="./slip.d.ts" />
 
-import { IOptions, ISibling, ISlip, IStateIdle, IStateUndecided, ITarget, ITransform } from './slip.d';
+import { IOptions, IPosition, ISibling, ISlip, IStateIdle, IStateUndecided, ITarget, ITransform } from './slip.d';
 
 /*
     Slip - swiping and reordering in lists of elements on touch screens, no fuss.
@@ -149,7 +149,7 @@ export const Slip = function(this: ISlip): ISlip {
     testElementStyle = null;
 
     let globalInstances = 0;
-    const attachedBodyHandlerHack = false;
+    let attachedBodyHandlerHack = false;
     const nullHandler = function() {};
 
     const Slip = function(this: ISlip, container: HTMLElement | null, options: IOptions) {
@@ -274,7 +274,7 @@ export const Slip = function(this: ISlip): ISlip {
                     onMove: () => {
                         const move = this.getAbsoluteMovement();
 
-                        if (move.x > 20 && move.y < Math.max(100, this.target.height)) {
+                        if (move.x > 20 && move.y < Math.max(100, this.target.height || 0)) {
                             if (this.dispatch(this.target.originalTarget, 'beforeswipe', {
                                 directionX: move.directionX,
                                 directionY: move.directionY
@@ -317,7 +317,7 @@ export const Slip = function(this: ISlip): ISlip {
                 return {
                     leaveState: () => {
                         if (swipeSuccess) {
-                            this.animateSwipe((target: ITarget): void | boolean => {
+                            this.animateSwipe(target => {
                                 target.node.style[transformJSPropertyName] = target.baseTransform.original;
                                 target.node.style[transitionJSPropertyName] = '';
                                 if (this.dispatch(target.node, 'afterswipe')) {
@@ -335,7 +335,7 @@ export const Slip = function(this: ISlip): ISlip {
                     onMove: () => {
                         const move = this.getTotalMovement();
 
-                        if (Math.abs(move.y) < this.target.height + 20) {
+                        if (this.target.height && Math.abs(move.y) < this.target.height + 20) {
                             if (this.dispatch(this.target.node, 'animateswipe', {
                                 x: move.x,
                                 originalIndex: originalIndex
@@ -445,7 +445,7 @@ export const Slip = function(this: ISlip): ISlip {
                     const move = this.getTotalMovement();
                     this.target.node.style[transformJSPropertyName] = 'translate(0,' + move.y + 'px) ' + hwTopLayerMagicStyle + this.target.baseTransform.value;
 
-                    const height = this.target.height;
+                    const height = this.target.height || 0;
                     otherNodes.forEach(function(o) {
                         let off = 0;
                         if (o.pos < 0 && move.y < 0 && o.pos > move.y) {
@@ -520,7 +520,7 @@ export const Slip = function(this: ISlip): ISlip {
                         this.dispatch(this.target.node, 'reorder', {
                             spliceIndex: spliceIndex,
                             originalIndex: originalIndex,
-                            insertBefore: otherNodes[spliceIndex] ? otherNodes[spliceIndex].node : null,
+                            insertBefore: otherNodes[spliceIndex] ? (otherNodes[spliceIndex] as any).node : undefined,
                         });
 
                         this.setState(this.states.idle);
@@ -544,7 +544,7 @@ export const Slip = function(this: ISlip): ISlip {
             this.container = container;
 
             // Accessibility
-            if (false !== accessibility.container.tabIndex) {
+            if (false !== accessibility.container.tabIndex as any as boolean) {
                 this.container.tabIndex = accessibility.container.tabIndex;
             }
             if (accessibility.container.ariaRole) {
@@ -578,7 +578,7 @@ export const Slip = function(this: ISlip): ISlip {
 
             document.removeEventListener('selectionchange', this.onSelection, false);
 
-            if (false !== accessibility.container.tabIndex) {
+            if (false !== accessibility.container.tabIndex as any as boolean) {
                 this.container.removeAttribute('tabIndex');
             }
             if (accessibility.container.ariaRole) {
@@ -593,7 +593,7 @@ export const Slip = function(this: ISlip): ISlip {
             }
         },
 
-        setState: function(newStateCtor) {
+        setState: (newStateCtor: {new(): any}) => {
             if (this.state) {
                 if (this.state.ctor === newStateCtor) return;
                 if (this.state.leaveState) this.state.leaveState.call(this);
@@ -608,44 +608,45 @@ export const Slip = function(this: ISlip): ISlip {
             }
         },
 
-        findTargetNode: function(targetNode) {
+        findTargetNode: (targetNode: Node | null): Node | null => {
             while (targetNode && targetNode.parentNode !== this.container) {
-                targetNode = targetNode.parentNode;
+                if (targetNode.parentNode != null)
+                    targetNode = targetNode.parentNode;
             }
             return targetNode;
         },
 
-        onContainerFocus: function(e) {
+        onContainerFocus: (e: TouchEvent) => {
             e.stopPropagation();
             this.setChildNodesAriaRoles();
         },
 
         setChildNodesAriaRoles: () => {
-            const nodes = this.container.childNodes;
-            for (const i = 0; i < nodes.length; i++) {
+            const nodes = this.container.childNodes as NodeListOf<HTMLElement>;
+            for (let i = 0; i < nodes.length; i++) {
                 if (nodes[i].nodeType != 1) continue;
                 if (accessibility.items.ariaRole) {
                     nodes[i].setAttribute('aria-role', accessibility.items.ariaRole);
                 }
-                if (false !== accessibility.items.tabIndex) {
+                if (false !== accessibility.items.tabIndex as any as boolean) {
                     nodes[i].tabIndex = accessibility.items.tabIndex;
                 }
             }
         },
 
         unSetChildNodesAriaRoles: () => {
-            const nodes = this.container.childNodes;
-            for (const i = 0; i < nodes.length; i++) {
+            const nodes = this.container.childNodes as NodeListOf<HTMLElement>;
+            for (let i = 0; i < nodes.length; i++) {
                 if (nodes[i].nodeType != 1) continue;
                 if (accessibility.items.ariaRole) {
                     nodes[i].removeAttribute('aria-role');
                 }
-                if (false !== accessibility.items.tabIndex) {
+                if (false !== accessibility.items.tabIndex as any as boolean) {
                     nodes[i].removeAttribute('tabIndex');
                 }
             }
         },
-        onSelection: function(e) {
+        onSelection: (e: Event & Node) => {
             e.stopPropagation();
             const isRelated = e.target === document || this.findTargetNode(e);
             const iOS = /(iPhone|iPad|iPod)/i.test(navigator.userAgent) && !/(Android|Windows)/i.test(navigator.userAgent);
@@ -683,7 +684,7 @@ export const Slip = function(this: ISlip): ISlip {
             }
         },
 
-        onMouseLeave: function(e) {
+        onMouseLeave: (e: MouseEvent) => {
             e.stopPropagation();
             if (this.usingTouch) return;
 
@@ -694,7 +695,7 @@ export const Slip = function(this: ISlip): ISlip {
             }
         },
 
-        onMouseDown: function(e) {
+        onMouseDown: (e: MouseEvent & MSGesture) => {
             e.stopPropagation();
             if (this.usingTouch || e.button != 0 || !this.setTarget(e)) return;
 
@@ -709,7 +710,7 @@ export const Slip = function(this: ISlip): ISlip {
             });
         },
 
-        onTouchStart: function(e) {
+        onTouchStart: (e: TouchEvent) => {
             e.stopPropagation();
             this.usingTouch = true;
             this.canPreventScrolling = true;
@@ -720,7 +721,7 @@ export const Slip = function(this: ISlip): ISlip {
                 return;
             }
 
-            if (!this.setTarget(e)) return;
+            if (e.target != null && !this.setTarget(e)) return;
 
             this.startAtPosition({
                 x: e.touches[0].clientX,
@@ -729,7 +730,7 @@ export const Slip = function(this: ISlip): ISlip {
             });
         },
 
-        setTarget: function(e) {
+        setTarget: (e: Event & {target?: Node | null}): boolean => {
             const targetNode = this.findTargetNode(e.target);
             if (!targetNode) {
                 this.setState(this.states.idle);
@@ -737,31 +738,31 @@ export const Slip = function(this: ISlip): ISlip {
             }
 
             //check for a scrollable parent
-            let scrollContainer = targetNode.parentNode;
+            let scrollContainer = targetNode.parentNode as HTMLElement;
             while (scrollContainer) {
                 if (scrollContainer == document.body) break;
-                if (scrollContainer.scrollHeight > scrollContainer.clientHeight && window.getComputedStyle(scrollContainer)['overflow-y'] != 'visible') break;
-                scrollContainer = scrollContainer.parentNode;
+                if (scrollContainer.scrollHeight > scrollContainer.clientHeight && window.getComputedStyle(scrollContainer).overflowY !== 'visible') break;
+                scrollContainer = scrollContainer.parentNode as HTMLElement;
             }
             scrollContainer = scrollContainer || document.body;
 
             this.target = {
-                originalTarget: e.target,
-                node: targetNode,
+                originalTarget: e.target as any as ITarget,
+                node: targetNode as ITarget['node'],
                 scrollContainer: scrollContainer,
                 origScrollTop: scrollContainer.scrollTop,
                 origScrollHeight: scrollContainer.scrollHeight,
-                baseTransform: getTransform(targetNode),
+                baseTransform: getTransform(targetNode as HTMLElement),
             };
             return true;
         },
 
-        startAtPosition: function(pos) {
+        startAtPosition: (pos: IPosition) => {
             this.startPosition = this.previousPosition = this.latestPosition = pos;
             this.setState(this.states.undecided);
         },
 
-        updatePosition: function(e, pos) {
+        updatePosition: (e: MouseEvent | TouchEvent, pos: IPosition) => {
             if (this.target == null) {
                 return;
             }
@@ -779,7 +780,7 @@ export const Slip = function(this: ISlip): ISlip {
             }
         },
 
-        onMouseMove: function(e) {
+        onMouseMove: (e: MouseEvent) => {
             e.stopPropagation();
             this.updatePosition(e, {
                 x: e.clientX,
@@ -788,7 +789,7 @@ export const Slip = function(this: ISlip): ISlip {
             });
         },
 
-        onTouchMove: function(e) {
+        onTouchMove: (e: TouchEvent) => {
             e.stopPropagation();
             this.updatePosition(e, {
                 x: e.touches[0].clientX,
@@ -800,7 +801,7 @@ export const Slip = function(this: ISlip): ISlip {
             this.canPreventScrolling = false;
         },
 
-        onMouseUp: function(e) {
+        onMouseUp: (e: MouseEvent) => {
             e.stopPropagation();
             if (this.usingTouch || e.button !== 0) return;
 
@@ -898,8 +899,8 @@ export const Slip = function(this: ISlip): ISlip {
             );
         },
 
-        animateSwipe: function(callback: (that: any) => void) {
-            const target = this.target;
+        animateSwipe: (callback: (target: ITarget) => void): void | boolean => {
+            const target: ITarget = this.target;
             const siblings = this.getSiblings(target);
             const emptySpaceTransformStyle = 'translate(0,' + this.target.height + 'px) ' + hwLayerMagicStyle + ' ';
 

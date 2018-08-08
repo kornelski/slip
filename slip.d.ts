@@ -2,18 +2,31 @@ export interface ISlip extends IState, IDispatch, IMovement {
     (container: HTMLElement | null, options: IOptions): ISlip;
 
     options: IOptions;
-    states: {reorder: string, swipe: string, idle: string};
+    states: {reorder: string, swipe: string, idle: string, undecided: string};
     attach: (container: HTMLElement) => void;
     container: HTMLElement;
     latestPosition: IPosition;
     startPosition: IPosition;
     previousPosition: IPosition;
-    animateSwipe: (target: ITarget) => void | boolean;
+    animateSwipe: (callback: (target: ITarget) => void) => void | boolean;
     animateToZero: (callback?: (target: ITarget) => void, target?: ITarget) => void | boolean;
     getTotalMovement: () => IPosition;
     updateScrolling: () => void;
     target: ITarget;
     state: IState;
+    detach: () => void;
+    setChildNodesAriaRoles: () => void;
+    unSetChildNodesAriaRoles: () => void;
+    otherNodes: {node: Node & ChildNode, baseTransform: ITransform, pos: | EventTarget number}[];
+    findTargetNode: (targetNode: Node | null) => Node | null;
+    mouseHandlersAttached: boolean;
+    usingTouch: boolean;
+    addMouseHandlers: () => void;
+    canPreventScrolling: boolean;
+    startAtPosition: (position: IPosition) => void;
+    setTarget: (e: Event & {target: Node | EventTarget | null}) => boolean;
+    getSiblings: (target: ITarget) => ISibling[];
+    updatePosition: (e: MouseEvent | TouchEvent, position: IPosition) => void;
 }
 
 interface IDispatch {
@@ -33,7 +46,7 @@ export interface IOptions {
     attach: ISlip['attach'];
 }
 
-interface IPosition {
+export interface IPosition {
     x: number;
     y: number;
     time: number;
@@ -52,7 +65,11 @@ export interface IState {
     onContainerFocus: () => void;
     onLeave: () => void;
     onEnd: () => void;
+    onMove: () => void;
     setState: (state: ISlip['states']['idle']) => void;
+    ctor: {new(): any};
+    leaveState: () => void;
+    allowTextSelection: boolean;
 }
 
 interface IStateSelected extends IMovement {
@@ -79,9 +96,12 @@ export interface IStateReorder extends IStateUndecided, ISlip {
 
 export interface ITarget {
     node: HTMLElement & {style: {willChange?: string;}};
-    height: number;
+    height?: number;
     originalTarget: ITarget;
     baseTransform: ITransform;
+    scrollContainer: HTMLElement;
+    origScrollTop: number;
+    origScrollHeight: number;
 }
 
 export interface ISibling {
@@ -107,4 +127,5 @@ interface IMove {
 }
 
 type TEvent = 'beforewait' | 'beforereorder' | 'beforeswipe' | 'tap' | 'afterswipe'
-    | 'animateswipe' | 'cancelswipe' | 'swipe' | 'reorder';
+    | 'animateswipe' | 'cancelswipe' | 'swipe' | 'reorder'
+    | 'mouseleave' | 'mousemove' | 'mouseup' | 'blur';
