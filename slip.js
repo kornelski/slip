@@ -230,13 +230,14 @@ exports.Slip = function () {
                 this.target.height = this.target.node.offsetHeight;
                 this.target.node.style.willChange = transformCSSPropertyName;
                 this.target.node.style[transitionJSPropertyName] = '';
+                var holdTimer = 0;
                 if (!this.dispatch(this.target.originalTarget, 'beforewait')) {
                     if (this.dispatch(this.target.originalTarget, 'beforereorder')) {
                         this.setState(this.states.reorder);
                     }
                 }
                 else {
-                    var holdTimer = setTimeout(function () {
+                    holdTimer = setTimeout(function () {
                         var move = _this.getAbsoluteMovement();
                         if (_this.canPreventScrolling && move.x < 15 && move.y < 25) {
                             if (_this.dispatch(_this.target.originalTarget, 'beforereorder')) {
@@ -777,7 +778,7 @@ exports.Slip = function () {
             else {
                 event = document.createEvent('Event');
                 event.initEvent('slip:' + eventName, true, true);
-                event.detail = detail;
+                // event.detail = detail;
             }
             return targetNode.dispatchEvent(event);
         },

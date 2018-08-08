@@ -17,7 +17,7 @@ export interface ISlip extends IState, IDispatch, IMovement {
     detach: () => void;
     setChildNodesAriaRoles: () => void;
     unSetChildNodesAriaRoles: () => void;
-    otherNodes: {node: Node & ChildNode, baseTransform: ITransform, pos: | EventTarget number}[];
+    otherNodes: {node: Node & ChildNode, baseTransform: ITransform, pos: | EventTarget}[];
     findTargetNode: (targetNode: Node | null) => Node | null;
     mouseHandlersAttached: boolean;
     usingTouch: boolean;
@@ -77,7 +77,7 @@ interface IStateSelected extends IMovement {
     usingTouch: boolean;
     target: ITarget | null;
     setState: (state: IStateSelected['states']['reorder']) => void;
-    states: {reorder: string, swipe: string, idle: string};
+    states: ISlip['states'];
     canPreventScrolling: boolean;
     container: HTMLElement;
 }

@@ -254,12 +254,15 @@ export const Slip = function(this: ISlip): ISlip {
                 this.target.node.style.willChange = transformCSSPropertyName;
                 this.target.node.style[transitionJSPropertyName] = '';
 
+                let holdTimer = 0;
+
                 if (!this.dispatch(this.target.originalTarget, 'beforewait')) {
                     if (this.dispatch(this.target.originalTarget, 'beforereorder')) {
                         this.setState(this.states.reorder);
                     }
+
                 } else {
-                    const holdTimer = setTimeout(() => {
+                    holdTimer = setTimeout(() => {
                         const move = this.getAbsoluteMovement();
                         if (this.canPreventScrolling && move.x < 15 && move.y < 25) {
                             if (this.dispatch(this.target.originalTarget, 'beforereorder')) {
@@ -867,7 +870,7 @@ export const Slip = function(this: ISlip): ISlip {
             } else {
                 event = document.createEvent('Event') as CustomEvent<any>;
                 event.initEvent('slip:' + eventName, true, true);
-                event.detail = detail;
+                // event.detail = detail;
             }
             return targetNode.dispatchEvent(event);
         },
@@ -931,5 +934,5 @@ export const Slip = function(this: ISlip): ISlip {
             );
         },
     };
-    return Slip;
+    return Slip as any;
 };
