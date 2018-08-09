@@ -6,7 +6,6 @@ import {
     IPosition,
     ISibling,
     ISlip,
-    IState,
     IStateImplement,
     IStates,
     ITarget,
@@ -128,11 +127,11 @@ import {
 
 export class Slip implements ISlip {
     private static nullHandler = function() {};
-    private state?: IState = undefined;
-    cancel!: ISlip['cancel'];
+    private state!: IStateImplement;
+    private cancel!: ISlip['cancel'];
     private usingTouch: boolean = false; // there's no good way to detect touchscreen preference other than receiving a touch event (really, trust me).
     private mouseHandlersAttached: boolean = false;
-    states!: ISlip['states'];
+    private states!: ISlip['states'];
     private target!: ITarget; // the tapped/swiped/reordered node with height and backed up styles
     private previousPosition?: IPosition = undefined; // x,y,time where the finger was ~100ms ago (for velocity calculation)
     private accessibility = {
@@ -155,9 +154,9 @@ export class Slip implements ISlip {
     private compositorDoesNotOrderLayers = this.damnYouChrome;
     private canPreventScrolling: boolean = false;
     private startPosition!: IPosition; // x,y,time where first touch began
-    private transitionJSPropertyName = 'transition'.indexOf(this.testElementStyle.toString()) > -1 ? 'transition' : 'webkitTransition';
-    private transformJSPropertyName: string = 'transform'.indexOf(this.testElementStyle.toString()) > -1 ? 'transform' : 'webkitTransform';
-    private userSelectJSPropertyName = 'userSelect'.indexOf(this.testElementStyle.toString()) > -1 ? 'userSelect' : 'webkitUserSelect';
+    private transitionJSPropertyName!: string;
+    private transformJSPropertyName!: string;
+    private userSelectJSPropertyName!: string;
     private latestPosition!: IPosition; // x,y,time where the finger is currently
     // -webkit-mess
     private testElementStyle: {[index: string]: string} = document.createElement('div').style as any;
@@ -166,10 +165,15 @@ export class Slip implements ISlip {
     private transformCSSPropertyName!: string;
     private hwLayerMagicStyle = this.testElementStyle[this.transformJSPropertyName as any] ? 'translateZ(0) ' : '';
     private hwTopLayerMagicStyle = this.testElementStyle[this.transformJSPropertyName as any] ? 'translateZ(1px) ' : '';
+    private otherNodes: ISlip['otherNodes'] = [];
 
-    constructor(private container: HTMLElement, private options: IOptions) {
+    public constructor(public container: HTMLElement, public options: IOptions) {
         this.transformCSSPropertyName = this.transformJSPropertyName === 'webkitTransform' ? '-webkit-transform' : 'transform';
         this.testElementStyle[this.transformJSPropertyName as string] = 'translateZ(0)';
+        this.transitionJSPropertyName = 'transition'.indexOf(this.testElementStyle.toString()) > -1 ? 'transition' : 'webkitTransition';
+        this.transformJSPropertyName = 'transform'.indexOf(this.testElementStyle.toString()) > -1 ? 'transform' : 'webkitTransform';
+        this.userSelectJSPropertyName = 'userSelect'.indexOf(this.testElementStyle.toString()) > -1 ? 'userSelect' : 'webkitUserSelect';
+
         if ('string' === typeof (container as any as string))
             this.container = document.querySelector<HTMLElement>(container as any as string) as HTMLElement;
         if (!container || !container.addEventListener) throw new Error('Please specify DOM node to attach to');
@@ -200,11 +204,12 @@ export class Slip implements ISlip {
         this.attach(container);
 
         this.states = this._states();
+        this.state = this.states.undecided();
 
         return this;
     }
 
-    detach() {
+    private detach() {
         this.cancel();
 
         this.container.removeEventListener('mousedown', this.onMouseDown, false);
@@ -213,7 +218,7 @@ export class Slip implements ISlip {
         this.container.removeEventListener('touchstart', this.onTouchStart, false);
         this.container.removeEventListener('touchcancel', this.cancel, false);
 
-        document.removeEventListener('selectionchange', this.onSelection, false);
+        document.removeEventListener('selectionchange', this.onSelection as EventListenerOrEventListenerObject, false);
 
         if (false !== this.accessibility.container.tabIndex as any as boolean) {
             this.container.removeAttribute('tabIndex');
@@ -230,7 +235,7 @@ export class Slip implements ISlip {
         }
     }
 
-    attach(container: HTMLElement) {
+    private attach(container: HTMLElement) {
         this.globalInstances++;
         if (this.container) this.detach();
 
@@ -256,7 +261,7 @@ export class Slip implements ISlip {
         this.otherNodes = [];
 
         // selection on iOS interferes with reordering
-        document.addEventListener('selectionchange', this.onSelection, false);
+        document.addEventListener('selectionchange', this.onSelection as EventListenerOrEventListenerObject, false);
 
         // cancel is called e.g. when iOS detects multitasking gesture
         this.container.addEventListener('touchcancel', this.cancel, false);
@@ -267,9 +272,9 @@ export class Slip implements ISlip {
         // mousemove and mouseup are attached dynamically
     }
 
-    setState(newStateCtor: () => void) {
+    private setState(newStateCtor: () => void) {
         if (this.state) {
-            if (this.state.ctor === newStateCtor) return;
+            // if (this.state.ctor === newStateCtor) return;
             if (this.state.leaveState) this.state.leaveState.call(this);
         }
 
@@ -282,7 +287,7 @@ export class Slip implements ISlip {
         }
     }
 
-    setChildNodesAriaRoles() {
+    private setChildNodesAriaRoles() {
         const nodes = this.container.childNodes as NodeListOf<HTMLElement>;
         for (let i = 0; i < nodes.length; i++) {
             if (nodes[i].nodeType != 1) continue;
@@ -295,7 +300,7 @@ export class Slip implements ISlip {
         }
     }
 
-    unSetChildNodesAriaRoles() {
+    private unSetChildNodesAriaRoles() {
         const nodes = this.container.childNodes as NodeListOf<HTMLElement>;
         for (let i = 0; i < nodes.length; i++) {
             if (nodes[i].nodeType != 1) continue;
@@ -308,8 +313,8 @@ export class Slip implements ISlip {
         }
     }
 
-    setTarget(e: MouseEvent & MSGesture): boolean {
-        const targetNode = this.findTargetNode(e.target);
+    private setTarget(e: Event): boolean {
+        const targetNode = this.findTargetNode(e.target as HTMLElement);
         if (!targetNode) {
             this.setState(this.states.idle);
             return false;
@@ -325,7 +330,7 @@ export class Slip implements ISlip {
         scrollContainer = scrollContainer || document.body;
 
         this.target = {
-            originalTarget: e.target as any as ITarget,
+            originalTarget: e.target as EventTarget,
             node: targetNode as ITarget['node'],
             scrollContainer: scrollContainer,
             origScrollTop: scrollContainer.scrollTop,
@@ -335,7 +340,7 @@ export class Slip implements ISlip {
         return true;
     }
 
-    findTargetNode(targetNode: Node | null): Node | null {
+    private findTargetNode(targetNode: Node | null): Node | null {
         while (targetNode && targetNode.parentNode !== this.container) {
             if (targetNode.parentNode != null)
                 targetNode = targetNode.parentNode;
@@ -343,12 +348,12 @@ export class Slip implements ISlip {
         return targetNode;
     }
 
-    onContainerFocus(e: TouchEvent) {
+    private onContainerFocus(e: UIEvent) {
         e.stopPropagation();
         this.setChildNodesAriaRoles();
     }
 
-    getAbsoluteMovement(): Required<IMove> {
+    private getAbsoluteMovement(): Required<IMove> {
         const move = this.getTotalMovement() as Required<IMove>;
         return {
             x: Math.abs(move.x),
@@ -359,7 +364,7 @@ export class Slip implements ISlip {
         } as any;
     }
 
-    getTotalMovement(): IPosition {
+    private getTotalMovement(): IPosition {
         const scrollOffset = this.target.scrollContainer.scrollTop - this.target.origScrollTop;
         return {
             x: this.latestPosition.x - this.startPosition.x,
@@ -368,9 +373,9 @@ export class Slip implements ISlip {
         };
     }
 
-    onSelection(e: Event & Node) {
+    private onSelection(e: UIEvent & Node) {
         e.stopPropagation();
-        const isRelated = e.target === document || this.findTargetNode(e);
+        const isRelated = e.target === document || this.findTargetNode(e as any as Node);
         const iOS = /(iPhone|iPad|iPod)/i.test(navigator.userAgent) && !/(Android|Windows)/i.test(navigator.userAgent);
         if (!isRelated) return;
 
@@ -384,7 +389,7 @@ export class Slip implements ISlip {
         }
     }
 
-    addMouseHandlers() {
+    private addMouseHandlers() {
         // unlike touch events, mousemove/up is not conveniently fired on the same element,
         // but I don't need to listen to unrelated events all the time
         if (!this.mouseHandlersAttached) {
@@ -396,7 +401,7 @@ export class Slip implements ISlip {
         }
     }
 
-    removeMouseHandlers() {
+    private removeMouseHandlers() {
         if (this.mouseHandlersAttached) {
             this.mouseHandlersAttached = false;
             document.documentElement.removeEventListener('mouseleave', this.onMouseLeave, false);
@@ -406,7 +411,7 @@ export class Slip implements ISlip {
         }
     }
 
-    onMouseLeave(e: MouseEvent) {
+    private onMouseLeave(e: MouseEvent) {
         e.stopPropagation();
         if (this.usingTouch) return;
 
@@ -417,7 +422,7 @@ export class Slip implements ISlip {
         }
     }
 
-    onMouseDown(e: MouseEvent & MSGesture) {
+    private onMouseDown(e: MouseEvent) {
         e.stopPropagation();
         if (this.usingTouch || e.button != 0 || !this.setTarget(e)) return;
 
@@ -432,7 +437,7 @@ export class Slip implements ISlip {
         });
     }
 
-    onTouchStart(e: TouchEvent) {
+    private onTouchStart(e: TouchEvent) {
         e.stopPropagation();
         this.usingTouch = true;
         this.canPreventScrolling = true;
@@ -452,7 +457,7 @@ export class Slip implements ISlip {
         });
     }
 
-    dispatch(targetNode: EventTarget, eventName: TEvent, detail?: IMove) {
+    private dispatch(targetNode: EventTarget, eventName: TEvent, detail?: IMove) {
         let event = document.createEvent('CustomEvent');
         if (event && event.initCustomEvent) {
             event.initCustomEvent('slip:' + eventName, true, true, detail);
@@ -464,12 +469,12 @@ export class Slip implements ISlip {
         return targetNode.dispatchEvent(event);
     }
 
-    startAtPosition(pos: IPosition) {
+    private startAtPosition(pos: IPosition) {
         this.startPosition = this.previousPosition = this.latestPosition = pos;
         this.setState(this.states.undecided);
     }
 
-    updatePosition(e: MouseEvent | TouchEvent, pos: IPosition) {
+    private updatePosition(e: MouseEvent | TouchEvent, pos: IPosition) {
         if (this.target == null) {
             return;
         }
@@ -482,12 +487,12 @@ export class Slip implements ISlip {
         }
 
         // sample latestPosition 100ms for velocity
-        if (this.latestPosition.time - this.previousPosition.time > 100) {
+        if (this.latestPosition.time - (this.previousPosition || this.latestPosition).time > 100) {
             this.previousPosition = this.latestPosition;
         }
     }
 
-    onMouseMove(e: MouseEvent) {
+    private onMouseMove(e: MouseEvent) {
         e.stopPropagation();
         this.updatePosition(e, {
             x: e.clientX,
@@ -496,7 +501,7 @@ export class Slip implements ISlip {
         });
     }
 
-    onTouchMove(e: TouchEvent) {
+    private onTouchMove(e: TouchEvent) {
         e.stopPropagation();
         this.updatePosition(e, {
             x: e.touches[0].clientX,
@@ -508,7 +513,7 @@ export class Slip implements ISlip {
         this.canPreventScrolling = false;
     }
 
-    onMouseUp(e: MouseEvent) {
+    private onMouseUp(e: MouseEvent) {
         e.stopPropagation();
         if (this.usingTouch || e.button !== 0) return;
 
@@ -517,7 +522,7 @@ export class Slip implements ISlip {
         }
     }
 
-    onTouchEnd(e: TouchEvent) {
+    private onTouchEnd(e: TouchEvent) {
         e.stopPropagation();
         if (e.touches.length > 1) {
             this.cancel();
@@ -526,7 +531,7 @@ export class Slip implements ISlip {
         }
     }
 
-    animateToZero(callback?: (target: ITarget) => void, target?: ITarget) {
+    private animateToZero(callback?: (target: ITarget) => void, target?: ITarget) {
         // save, because this.target/container could change during animation
         target = target || this.target;
 
@@ -542,7 +547,7 @@ export class Slip implements ISlip {
         );
     }
 
-    getSiblings(target: ITarget): ISibling[] {
+    private getSiblings(target: ITarget): ISibling[] {
         const siblings = [];
         let tmp = target.node.nextSibling;
         while (tmp) {
@@ -555,7 +560,7 @@ export class Slip implements ISlip {
         return siblings;
     }
 
-    updateScrolling() {
+    private updateScrolling() {
         const triggerOffset = 40;
         let offset = 0;
 
@@ -576,7 +581,7 @@ export class Slip implements ISlip {
         scrollable.scrollTop = Math.max(0, Math.min(maxScrollTop, scrollable.scrollTop + offset));
     }
 
-    animateSwipe(callback: (target: ITarget) => void): void | boolean {
+    private animateSwipe(callback: (target: ITarget) => void): void | boolean {
         const target: ITarget = this.target;
         const siblings = this.getSiblings(target);
         const emptySpaceTransformStyle = 'translate(0,' + this.target.height + 'px) ' + this.hwLayerMagicStyle + ' ';
@@ -631,6 +636,12 @@ export class Slip implements ISlip {
                     outer.target.node.style.willChange = '';
                     delete outer.target;
                 }
+
+                outer.usingTouch = false;
+
+                return {
+                    allowTextSelection: true,
+                };
             }
 
             static undecided(): IStateImplement {
@@ -657,6 +668,7 @@ export class Slip implements ISlip {
                 }
 
                 return {
+                    allowTextSelection: false,
                     leaveState: () => clearTimeout(holdTimer),
                     onMove: () => {
                         const move = outer.getAbsoluteMovement();
@@ -702,6 +714,7 @@ export class Slip implements ISlip {
                 outer.target.height = outer.target.node.offsetHeight;
 
                 return {
+                    allowTextSelection: false,
                     leaveState: () => {
                         if (swipeSuccess) {
                             outer.animateSwipe(target => {
@@ -743,7 +756,7 @@ export class Slip implements ISlip {
                         const velocity = move.x / move.time;
 
                         // How far out has the item been swiped?
-                        const swipedPercent = Math.abs((outer.startPosition.x - outer.previousPosition.x) / outer.container.clientWidth) * 100;
+                        const swipedPercent = Math.abs((outer.startPosition.x - (outer.previousPosition || outer.startPosition).x) / outer.container.clientWidth) * 100;
 
                         const swiped = (velocity > outer.options.minimumSwipeVelocity && move.time > outer.options.minimumSwipeTime) || (outer.options.keepSwipingPercent && swipedPercent > outer.options.keepSwipingPercent);
 
@@ -850,6 +863,7 @@ export class Slip implements ISlip {
                 onMove();
 
                 return {
+                    allowTextSelection: false,
                     leaveState: () => {
                         if (mouseOutsideTimer) clearTimeout(mouseOutsideTimer);
 
@@ -933,8 +947,6 @@ export class Slip implements ISlip {
         }
         return { value: '', original: '' };
     }
-
-    /// states
 
     private findIndex(target: {node: HTMLElement}, nodes: NodeListOf<Node & ChildNode>): number {
         let originalIndex = 0;

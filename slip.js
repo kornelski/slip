@@ -115,7 +115,6 @@ var Slip = /** @class */ (function () {
     function Slip(container, options) {
         this.container = container;
         this.options = options;
-        this.state = undefined;
         this.usingTouch = false; // there's no good way to detect touchscreen preference other than receiving a touch event (really, trust me).
         this.mouseHandlersAttached = false;
         this.previousPosition = undefined; // x,y,time where the finger was ~100ms ago (for velocity calculation)
@@ -138,17 +137,18 @@ var Slip = /** @class */ (function () {
            Looks like WebKit bug #61824, but iOS Safari doesn't have that problem. */
         this.compositorDoesNotOrderLayers = this.damnYouChrome;
         this.canPreventScrolling = false;
-        this.transitionJSPropertyName = 'transition'.indexOf(this.testElementStyle.toString()) > -1 ? 'transition' : 'webkitTransition';
-        this.transformJSPropertyName = 'transform'.indexOf(this.testElementStyle.toString()) > -1 ? 'transform' : 'webkitTransform';
-        this.userSelectJSPropertyName = 'userSelect'.indexOf(this.testElementStyle.toString()) > -1 ? 'userSelect' : 'webkitUserSelect';
         // -webkit-mess
         this.testElementStyle = document.createElement('div').style;
         this.globalInstances = 0;
         this.attachedBodyHandlerHack = false;
         this.hwLayerMagicStyle = this.testElementStyle[this.transformJSPropertyName] ? 'translateZ(0) ' : '';
         this.hwTopLayerMagicStyle = this.testElementStyle[this.transformJSPropertyName] ? 'translateZ(1px) ' : '';
+        this.otherNodes = [];
         this.transformCSSPropertyName = this.transformJSPropertyName === 'webkitTransform' ? '-webkit-transform' : 'transform';
         this.testElementStyle[this.transformJSPropertyName] = 'translateZ(0)';
+        this.transitionJSPropertyName = 'transition'.indexOf(this.testElementStyle.toString()) > -1 ? 'transition' : 'webkitTransition';
+        this.transformJSPropertyName = 'transform'.indexOf(this.testElementStyle.toString()) > -1 ? 'transform' : 'webkitTransform';
+        this.userSelectJSPropertyName = 'userSelect'.indexOf(this.testElementStyle.toString()) > -1 ? 'userSelect' : 'webkitUserSelect';
         if ('string' === typeof container)
             this.container = document.querySelector(container);
         if (!container || !container.addEventListener)
@@ -176,6 +176,7 @@ var Slip = /** @class */ (function () {
         this.setState(this.states.idle);
         this.attach(container);
         this.states = this._states();
+        this.state = this.states.undecided();
         return this;
     }
     Slip.prototype.detach = function () {
@@ -232,8 +233,7 @@ var Slip = /** @class */ (function () {
     };
     Slip.prototype.setState = function (newStateCtor) {
         if (this.state) {
-            if (this.state.ctor === newStateCtor)
-                return;
+            // if (this.state.ctor === newStateCtor) return;
             if (this.state.leaveState)
                 this.state.leaveState.call(this);
         }
@@ -428,7 +428,7 @@ var Slip = /** @class */ (function () {
             }
         }
         // sample latestPosition 100ms for velocity
-        if (this.latestPosition.time - this.previousPosition.time > 100) {
+        if (this.latestPosition.time - (this.previousPosition || this.latestPosition).time > 100) {
             this.previousPosition = this.latestPosition;
         }
     };
@@ -559,6 +559,10 @@ var Slip = /** @class */ (function () {
                     outer.target.node.style.willChange = '';
                     delete outer.target;
                 }
+                outer.usingTouch = false;
+                return {
+                    allowTextSelection: true,
+                };
             };
             class_1.undecided = function () {
                 outer.target.height = outer.target.node.offsetHeight;
@@ -581,6 +585,7 @@ var Slip = /** @class */ (function () {
                     }, 300);
                 }
                 return {
+                    allowTextSelection: false,
                     leaveState: function () { return clearTimeout(holdTimer); },
                     onMove: function () {
                         var move = outer.getAbsoluteMovement();
@@ -619,6 +624,7 @@ var Slip = /** @class */ (function () {
                 var removeClass = function () { return container.classList.remove('slip-swiping-container'); };
                 outer.target.height = outer.target.node.offsetHeight;
                 return {
+                    allowTextSelection: false,
                     leaveState: function () {
                         if (swipeSuccess) {
                             outer.animateSwipe(function (target) {
@@ -658,7 +664,7 @@ var Slip = /** @class */ (function () {
                         var move = outer.getAbsoluteMovement();
                         var velocity = move.x / move.time;
                         // How far out has the item been swiped?
-                        var swipedPercent = Math.abs((outer.startPosition.x - outer.previousPosition.x) / outer.container.clientWidth) * 100;
+                        var swipedPercent = Math.abs((outer.startPosition.x - (outer.previousPosition || outer.startPosition).x) / outer.container.clientWidth) * 100;
                         var swiped = (velocity > outer.options.minimumSwipeVelocity && move.time > outer.options.minimumSwipeTime) || (outer.options.keepSwipingPercent && swipedPercent > outer.options.keepSwipingPercent);
                         if (swiped) {
                             if (outer.dispatch(outer.target.node, 'swipe', {
@@ -757,6 +763,7 @@ var Slip = /** @class */ (function () {
                 };
                 onMove();
                 return {
+                    allowTextSelection: false,
                     leaveState: function () {
                         if (mouseOutsideTimer)
                             clearTimeout(mouseOutsideTimer);
@@ -832,7 +839,6 @@ var Slip = /** @class */ (function () {
         }
         return { value: '', original: '' };
     };
-    /// states
     Slip.prototype.findIndex = function (target, nodes) {
         var originalIndex = 0;
         var listCount = 0;

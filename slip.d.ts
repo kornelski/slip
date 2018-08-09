@@ -1,6 +1,4 @@
-export interface ISlip extends IState, IDispatch, IMovement {
-    (container: HTMLElement | null, options: IOptions): ISlip;
-
+export interface ISlip extends IDispatch, IMovement {
     options: IOptions;
     states: IStates;
     _states: () => IStates;
@@ -14,21 +12,21 @@ export interface ISlip extends IState, IDispatch, IMovement {
     getTotalMovement: () => IPosition;
     updateScrolling: () => void;
     target?: ITarget;
-    state?: IState;
+    state: IStateImplement;
     detach: () => void;
     setChildNodesAriaRoles: () => void;
     unSetChildNodesAriaRoles: () => void;
-    otherNodes: {node: Node & ChildNode, baseTransform: ITransform, pos: | EventTarget}[];
     findTargetNode: (targetNode: Node | null) => Node | null;
     mouseHandlersAttached: boolean;
     usingTouch: boolean;
     addMouseHandlers: () => void;
     canPreventScrolling: boolean;
     startAtPosition: (position: IPosition) => void;
-    setTarget: (e: MouseEvent & MSGesture) => boolean;
+    setTarget: (e: Event) => boolean;
     getSiblings: (target: ITarget) => ISibling[];
     updatePosition: (e: MouseEvent | TouchEvent, position: IPosition) => void;
     cancel: () => void;
+    otherNodes: {node: Node & ChildNode, baseTransform: ITransform, pos: EventTarget}[];
 }
 
 interface IDispatch {
@@ -59,18 +57,19 @@ export interface IState extends IStateImplement {
     onTouchStart: (e: TouchEvent) => void;
     onTouchMove: (e: TouchEvent) => void;
     onTouchEnd: (e: TouchEvent) => void;
-    onMouseDown: (e: MouseEvent & MSGesture) => void;
+    onMouseDown: (e: MouseEvent) => void;
     onMouseMove: (e: MouseEvent) => void;
     onMouseUp: (e: MouseEvent) => void;
     onMouseLeave: (e: MouseEvent) => void;
-    onSelection: (e: Event & Node) => void;
-    onContainerFocus: (e: TouchEvent) => void;
+    onSelection: (e: UIEvent & Node) => void;
+    onContainerFocus: (e: UIEvent) => void;
 
     setState: (state: ISlip['states']['idle']) => void;
-    ctor: () => void;
 
     allowTextSelection: boolean;
 }
+
+export type TMouseEvent = MouseEvent & MSGesture & EventListenerOrEventListenerObject;
 
 interface IStateSelected extends IMovement {
     removeMouseHandlers: () => void;
@@ -80,18 +79,6 @@ interface IStateSelected extends IMovement {
     states: ISlip['states'];
     canPreventScrolling: boolean;
     container: HTMLElement;
-}
-
-export interface IStateIdle extends IStateSelected {
-
-}
-
-export interface IStateUndecided extends IStateSelected, IDispatch {
-    target: ITarget;
-}
-
-export interface IStateReorder extends IStateUndecided, ISlip {
-
 }
 
 export interface ITarget {
@@ -128,9 +115,9 @@ export interface IMove {
 
 export interface IStates {
     idle: () => void;
-    undecided: () => void;
-    swipe: () => void;
-    reorder: () => void;
+    undecided: () => IStateImplement;
+    swipe: () => IStateImplement;
+    reorder: () => IStateImplement;
 }
 
 export interface IStateImplement {
@@ -138,6 +125,7 @@ export interface IStateImplement {
     onLeave: () => void;
     onEnd: () => void;
     onMove: () => void;
+    allowTextSelection: boolean;
 }
 
 type TEvent = 'beforewait' | 'beforereorder' | 'beforeswipe' | 'tap' | 'afterswipe'
