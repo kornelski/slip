@@ -115,12 +115,13 @@ window['Slip'] = (function(){
     var accessibilityDefaults = {
         // Set values to false if you don't want Slip to manage them
         container: {
-            ariaRole: "listbox",
+            role: "listbox",
             tabIndex: 0,
             focus: false, // focuses after drop
         },
         items: {
-            ariaRole: "option", // If "option" flattens items, try "group": https://www.marcozehe.de/2013/03/08/sometimes-you-have-to-use-illegal-wai-aria-to-make-stuff-work/
+            role: "option", // If "option" flattens items, try "group":
+            // https://www.marcozehe.de/2013/03/08/sometimes-you-have-to-use-illegal-wai-aria-to-make-stuff-work/
             tabIndex: -1, // 0 will make every item tabbable, which isn't always useful
             focus: false, // focuses when dragging
         },
@@ -164,9 +165,9 @@ window['Slip'] = (function(){
         this.options.accessibility = options.accessibility || accessibilityDefaults;
         this.options.accessibility.container = options.accessibility.container || accessibilityDefaults.container;
 
-        this.options.accessibility.container.ariaRole = options.accessibility.container.ariaRole !== undefined ?
-            options.accessibility.container.ariaRole :
-            accessibilityDefaults.container.ariaRole;
+        this.options.accessibility.container.role = options.accessibility.container.role !== undefined ?
+            options.accessibility.container.role :
+            accessibilityDefaults.container.role;
 
         this.options.accessibility.container.tabIndex = options.accessibility.container.tabIndex !== undefined ?
             options.accessibility.container.tabIndex :
@@ -178,15 +179,15 @@ window['Slip'] = (function(){
 
         this.options.accessibility.items = options.accessibility.items || accessibilityDefaults.items;
 
-        this.options.accessibility.items.ariaRole = options.accessibility.items.ariaRole !== undefined ?
-            options.accessibility.items.ariaRole :
-            accessibilityDefaults.items.ariaRole;
+        this.options.accessibility.items.role = options.accessibility.items.role !== undefined ?
+            options.accessibility.items.role :
+            accessibilityDefaults.items.role;
 
         this.options.accessibility.items.tabIndex = options.accessibility.items.tabIndex !== undefined ?
             options.accessibility.items.tabIndex :
             accessibilityDefaults.items.tabIndex;
-            
-        this.options.accessibility.items.ariaRole = options.accessibility.items.focus !== undefined ?
+
+        this.options.accessibility.items.role = options.accessibility.items.focus !== undefined ?
             options.accessibility.items.focus :
             accessibilityDefaults.items.focus;
 
@@ -568,10 +569,10 @@ window['Slip'] = (function(){
             if (false !== this.options.accessibility.container.tabIndex) {
                 this.container.tabIndex = this.options.accessibility.container.tabIndex;
             }
-            if (this.options.accessibility.container.ariaRole) {
-                this.container.setAttribute('aria-role', this.options.accessibility.container.ariaRole);
+            if (this.options.accessibility.container.role) {
+                this.container.setAttribute('role', this.options.accessibility.container.role);
             }
-            this.setChildNodesAriaRoles();
+            this.setChildNodesRoles();
             this.container.addEventListener('focus', this.onContainerFocus, false);
 
             this.otherNodes = [];
@@ -602,10 +603,10 @@ window['Slip'] = (function(){
             if (false !== this.options.accessibility.container.tabIndex) {
                 this.container.removeAttribute('tabIndex');
             }
-            if (this.options.accessibility.container.ariaRole) {
-                this.container.removeAttribute('aria-role');
+            if (this.options.accessibility.container.role) {
+                this.container.removeAttribute('role');
             }
-            this.unSetChildNodesAriaRoles();
+            this.unSetChildNodesRoles();
 
             globalInstances--;
             if (!globalInstances && attachedBodyHandlerHack) {
@@ -638,15 +639,15 @@ window['Slip'] = (function(){
 
         onContainerFocus: function(e) {
             e.stopPropagation();
-            this.setChildNodesAriaRoles();
+            this.setChildNodesRoles();
         },
 
-        setChildNodesAriaRoles: function() {
+        setChildNodesRoles: function() {
             var nodes = this.container.childNodes;
             for(var i=0; i < nodes.length; i++) {
                 if (nodes[i].nodeType != 1) continue;
-                if (this.options.accessibility.items.ariaRole) {
-                    nodes[i].setAttribute('aria-role', this.options.accessibility.items.ariaRole);
+                if (this.options.accessibility.items.role) {
+                    nodes[i].setAttribute('role', this.options.accessibility.items.role);
                 }
                 if (false !== this.options.accessibility.items.tabIndex) {
                     nodes[i].tabIndex = this.options.accessibility.items.tabIndex;
@@ -654,12 +655,12 @@ window['Slip'] = (function(){
             }
         },
 
-        unSetChildNodesAriaRoles: function() {
+        unSetChildNodesRoles: function() {
             var nodes = this.container.childNodes;
             for(var i=0; i < nodes.length; i++) {
                 if (nodes[i].nodeType != 1) continue;
-                if (this.options.accessibility.items.ariaRole) {
-                    nodes[i].removeAttribute('aria-role');
+                if (this.options.accessibility.items.role) {
+                    nodes[i].removeAttribute('role');
                 }
                 if (false !== this.options.accessibility.items.tabIndex) {
                     nodes[i].removeAttribute('tabIndex');
