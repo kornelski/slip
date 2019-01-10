@@ -115,12 +115,13 @@ window['Slip'] = (function(){
     var accessibility = {
         // Set values to false if you don't want Slip to manage them
         container: {
-            ariaRole: "listbox",
+            role: "listbox",
             tabIndex: 0,
             focus: false, // focuses after drop
         },
         items: {
-            ariaRole: "option", // If "option" flattens items, try "group": https://www.marcozehe.de/2013/03/08/sometimes-you-have-to-use-illegal-wai-aria-to-make-stuff-work/
+            role: "option", // If "option" flattens items, try "group":
+            // https://www.marcozehe.de/2013/03/08/sometimes-you-have-to-use-illegal-wai-aria-to-make-stuff-work/
             tabIndex: -1, // 0 will make every item tabbable, which isn't always useful
             focus: false, // focuses when dragging
         },
@@ -540,8 +541,8 @@ window['Slip'] = (function(){
             if (false !== accessibility.container.tabIndex) {
                 this.container.tabIndex = accessibility.container.tabIndex;
             }
-            if (accessibility.container.ariaRole) {
-                this.container.setAttribute('aria-role', accessibility.container.ariaRole);
+            if (accessibility.container.role) {
+                this.container.setAttribute('role', accessibility.container.role);
             }
             this.setChildNodesAriaRoles();
             this.container.addEventListener('focus', this.onContainerFocus, false);
@@ -574,8 +575,8 @@ window['Slip'] = (function(){
             if (false !== accessibility.container.tabIndex) {
                 this.container.removeAttribute('tabIndex');
             }
-            if (accessibility.container.ariaRole) {
-                this.container.removeAttribute('aria-role');
+            if (accessibility.container.role) {
+                this.container.removeAttribute('role');
             }
             this.unSetChildNodesAriaRoles();
 
@@ -617,8 +618,8 @@ window['Slip'] = (function(){
             var nodes = this.container.childNodes;
             for(var i=0; i < nodes.length; i++) {
                 if (nodes[i].nodeType != 1) continue;
-                if (accessibility.items.ariaRole) {
-                    nodes[i].setAttribute('aria-role', accessibility.items.ariaRole);
+                if (accessibility.items.role) {
+                    nodes[i].setAttribute('role', accessibility.items.role);
                 }
                 if (false !== accessibility.items.tabIndex) {
                     nodes[i].tabIndex = accessibility.items.tabIndex;
@@ -630,8 +631,8 @@ window['Slip'] = (function(){
             var nodes = this.container.childNodes;
             for(var i=0; i < nodes.length; i++) {
                 if (nodes[i].nodeType != 1) continue;
-                if (accessibility.items.ariaRole) {
-                    nodes[i].removeAttribute('aria-role');
+                if (accessibility.items.role) {
+                    nodes[i].removeAttribute('role');
                 }
                 if (false !== accessibility.items.tabIndex) {
                     nodes[i].removeAttribute('tabIndex');
