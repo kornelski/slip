@@ -729,14 +729,19 @@ window['Slip'] = (function(){
                 return false;
             }
 
-            //check for a scrollable parent
-            var scrollContainer = targetNode.parentNode;
-            while (scrollContainer) {
-                if (scrollContainer == document.body) break;
-                if (scrollContainer.scrollHeight > scrollContainer.clientHeight && window.getComputedStyle(scrollContainer)['overflow-y'] != 'visible') break;
-                scrollContainer = scrollContainer.parentNode;
+            // scrollContainer may be explicitly set via options, otherwise search upwards for a parent with an overflow-y property
+            // fallback to document.scrollingElement (or documentElement on IE), and do not use document.body
+            var scrollContainer = this.options.scrollContainer;
+            if (!scrollContainer) {
+                var top = document.scrollingElement || document.documentElement;
+                scrollContainer = targetNode.parentNode;
+                while (scrollContainer) {
+                    if (scrollContainer == top) break;
+                    if (scrollContainer != document.body && scrollContainer.scrollHeight > scrollContainer.clientHeight && window.getComputedStyle(scrollContainer)['overflow-y'] != 'visible') break;
+                    scrollContainer = scrollContainer.parentNode;
+                }
+                scrollContainer = scrollContainer || top;
             }
-            scrollContainer = scrollContainer || document.body;
 
             this.target = {
                 originalTarget: e.target,
