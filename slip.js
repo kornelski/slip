@@ -112,7 +112,7 @@
 window['Slip'] = (function(){
     'use strict';
 
-    var accessibility = {
+    var accessibilityDefaults = {
         // Set values to false if you don't want Slip to manage them
         container: {
             role: "listbox",
@@ -120,8 +120,7 @@ window['Slip'] = (function(){
             focus: false, // focuses after drop
         },
         items: {
-            role: "option", // If "option" flattens items, try "group":
-            // https://www.marcozehe.de/2013/03/08/sometimes-you-have-to-use-illegal-wai-aria-to-make-stuff-work/
+            role: "option", // If "option" flattens items, try "group": https://www.marcozehe.de/2013/03/08/sometimes-you-have-to-use-illegal-wai-aria-to-make-stuff-work/
             tabIndex: -1, // 0 will make every item tabbable, which isn't always useful
             focus: false, // focuses when dragging
         },
@@ -162,6 +161,34 @@ window['Slip'] = (function(){
         this.options.minimumSwipeVelocity = options.minimumSwipeVelocity || 1;
         this.options.minimumSwipeTime = options.minimumSwipeTime || 110;
         this.options.ignoredElements = options.ignoredElements || [];
+        this.options.accessibility = options.accessibility || accessibilityDefaults;
+        this.options.accessibility.container = options.accessibility.container || accessibilityDefaults.container;
+
+        this.options.accessibility.container.role = options.accessibility.container.role !== undefined ?
+            options.accessibility.container.role :
+            accessibilityDefaults.container.role;
+
+        this.options.accessibility.container.tabIndex = options.accessibility.container.tabIndex !== undefined ?
+            options.accessibility.container.tabIndex :
+            accessibilityDefaults.container.tabIndex;
+
+        this.options.accessibility.container.focus = options.accessibility.container.focus !== undefined ?
+            options.accessibility.container.focus :
+            accessibilityDefaults.container.focus;
+
+        this.options.accessibility.items = options.accessibility.items || accessibilityDefaults.items;
+
+        this.options.accessibility.items.role = options.accessibility.items.role !== undefined ?
+            options.accessibility.items.role :
+            accessibilityDefaults.items.role;
+
+        this.options.accessibility.items.tabIndex = options.accessibility.items.tabIndex !== undefined ?
+            options.accessibility.items.tabIndex :
+            accessibilityDefaults.items.tabIndex;
+
+        this.options.accessibility.items.role = options.accessibility.items.focus !== undefined ?
+            options.accessibility.items.focus :
+            accessibilityDefaults.items.focus;
 
         if (!Array.isArray(this.options.ignoredElements)) throw new Error("ignoredElements must be an Array");
 
@@ -373,7 +400,7 @@ window['Slip'] = (function(){
             },
 
             reorder: function reorderStateInit() {
-                if (this.target.node.focus && accessibility.items.focus) {
+                if (this.target.node.focus && this.options.accessibility.items.focus) {
                     this.target.node.focus();
                 }
 
@@ -464,7 +491,7 @@ window['Slip'] = (function(){
                             this.container.style.webkitTransformStyle = '';
                         }
 
-                        if (this.container.focus && accessibility.container.focus) {
+                        if (this.container.focus && this.options.accessibility.container.focus) {
                             this.container.focus();
                         }
 
@@ -538,11 +565,11 @@ window['Slip'] = (function(){
             this.container = container;
 
             // Accessibility
-            if (false !== accessibility.container.tabIndex) {
-                this.container.tabIndex = accessibility.container.tabIndex;
+            if (false !== this.options.accessibility.container.tabIndex) {
+                this.container.tabIndex = this.options.accessibility.container.tabIndex;
             }
-            if (accessibility.container.role) {
-                this.container.setAttribute('role', accessibility.container.role);
+            if (this.options.accessibility.container.role) {
+                this.container.setAttribute('role', this.options.accessibility.container.role);
             }
             this.setChildNodesAriaRoles();
             this.container.addEventListener('focus', this.onContainerFocus, false);
@@ -572,10 +599,10 @@ window['Slip'] = (function(){
 
             document.removeEventListener("selectionchange", this.onSelection, false);
 
-            if (false !== accessibility.container.tabIndex) {
+            if (false !== this.options.accessibility.container.tabIndex) {
                 this.container.removeAttribute('tabIndex');
             }
-            if (accessibility.container.role) {
+            if (this.options.accessibility.container.role) {
                 this.container.removeAttribute('role');
             }
             this.unSetChildNodesAriaRoles();
@@ -618,11 +645,11 @@ window['Slip'] = (function(){
             var nodes = this.container.childNodes;
             for(var i=0; i < nodes.length; i++) {
                 if (nodes[i].nodeType != 1) continue;
-                if (accessibility.items.role) {
-                    nodes[i].setAttribute('role', accessibility.items.role);
+                if (this.options.accessibility.items.role) {
+                    nodes[i].setAttribute('role', this.options.accessibility.items.role);
                 }
-                if (false !== accessibility.items.tabIndex) {
-                    nodes[i].tabIndex = accessibility.items.tabIndex;
+                if (false !== this.options.accessibility.items.tabIndex) {
+                    nodes[i].tabIndex = this.options.accessibility.items.tabIndex;
                 }
             }
         },
@@ -631,10 +658,10 @@ window['Slip'] = (function(){
             var nodes = this.container.childNodes;
             for(var i=0; i < nodes.length; i++) {
                 if (nodes[i].nodeType != 1) continue;
-                if (accessibility.items.role) {
+                if (this.options.accessibility.items.role) {
                     nodes[i].removeAttribute('role');
                 }
-                if (false !== accessibility.items.tabIndex) {
+                if (false !== this.options.accessibility.items.tabIndex) {
                     nodes[i].removeAttribute('tabIndex');
                 }
             }
@@ -730,14 +757,19 @@ window['Slip'] = (function(){
                 return false;
             }
 
-            //check for a scrollable parent
-            var scrollContainer = targetNode.parentNode;
-            while (scrollContainer) {
-                if (scrollContainer == document.body) break;
-                if (scrollContainer.scrollHeight > scrollContainer.clientHeight && window.getComputedStyle(scrollContainer)['overflow-y'] != 'visible') break;
-                scrollContainer = scrollContainer.parentNode;
+            // scrollContainer may be explicitly set via options, otherwise search upwards for a parent with an overflow-y property
+            // fallback to document.scrollingElement (or documentElement on IE), and do not use document.body
+            var scrollContainer = this.options.scrollContainer;
+            if (!scrollContainer) {
+                var top = document.scrollingElement || document.documentElement;
+                scrollContainer = targetNode.parentNode;
+                while (scrollContainer) {
+                    if (scrollContainer == top) break;
+                    if (scrollContainer != document.body && scrollContainer.scrollHeight > scrollContainer.clientHeight && window.getComputedStyle(scrollContainer)['overflow-y'] != 'visible') break;
+                    scrollContainer = scrollContainer.parentNode;
+                }
+                scrollContainer = scrollContainer || top;
             }
-            scrollContainer = scrollContainer || document.body;
 
             this.target = {
                 originalTarget: e.target,
